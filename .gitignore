@@ -20,3 +20,4 @@ files/*
 !files/.gitignore
 run.d/*
 !run.d/.gitignore
+extlib/*
