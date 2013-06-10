@@ -1,0 +1,216 @@
+use FindBin;
+use lib "$FindBin::Bin/mojo/lib";
+use Mojolicious::Lite;
+use Mojo::IOLoop;
+
+# Config
+my $config = plugin('INIConfig', ext => 'conf');
+
+# Task directory
+my $task_dir = app->home->rel_dir('task');
+
+my $clients = {};
+my $loop = Mojo::IOLoop->singleton;
+
+websocket '/' => sub {
+  my $self = shift;
+
+  # Client id
+  my $cid = "$self";
+  
+  # Controller
+  my $controller = $self;
+  
+  # Send date and time
+  my $datetime = localtime;
+  $self->send($datetime);
+  
+  # Receive message;
+  $self->on('message' => sub {
+    my ($self, $message) = @_;
+    
+    # Start clock
+    if ($message eq 'Start') {
+      
+      # Shortcut
+      return if $clients->{$cid}{running};
+      
+      # Start
+      $clients->{$cid}{running} = 1;
+      
+      # Subroutine for sending date and time
+      my $send_datetime;
+      $send_datetime = sub {
+
+        # Send date and time
+        my $datetime = localtime;
+        $controller->send($datetime);
+        
+        # Timer
+        $loop->timer(1, $send_datetime) if $clients->{$cid}{running};
+      };
+      
+      # Send
+      $send_datetime->();
+    }
+    
+    # Stop clock
+    else { $clients->{$cid}{running} = 0 }
+  });
+  
+  # on_finish
+  $self->on('finish' => sub {
+    # Remove client
+    delete $clients->{$cid};
+  });
+};
+
+get '/' => 'index';
+
+app->start;
+
+=pod
+
+sub startup {
+  my $self = shift;
+  my $app = $self;
+  
+  # Config
+  my $config = $self->plugin('INIConfig', ext => 'conf');
+  
+  # Workers is always 1
+  my $hypnotoad = $config->{hypnotoad};
+  $hypnotoad->{workers} = 1;
+  
+  # Port
+  my $is_parent = $ENV{ENVPUSH_PARENT};
+  
+  if ($is_parent) {
+    $hypnotoad->{listen} ||= ['http://*:10040'];
+  }
+  
+  # Task directory
+  my $task_dir = $self->home->rel_dir('task');
+
+  my $r = $self->routes;
+  
+  # Parent
+  if ($is_parent) {
+    
+    my $children = {};
+    
+    $r->get('/text' => {text => 'aaa'});
+    
+    $r->websocket('/' => sub {
+      
+      my $self = shift;
+      
+      # Child id
+      my $cid = "$self";
+      
+      # Resist controller
+      $children->{$cid} = $self;
+      
+      # Receive
+      $self->on(json => sub {
+        my ($tx, $hash) = @_;
+        
+        my $remote_address = $tx->remote_address;
+        
+        if (my $message = $hash->{message}) {
+          if ($hash->{error}) {
+            $app->log->error("(Parent) $message(From child $remote_address)");
+          }
+          else {
+            $app->log->info("(Parent) $message(From hild $remote_address)");
+          }
+        }
+      });
+      
+      # Finish
+      $self->on('finish' => sub {
+        # Remove child
+        delete $children->{$cid};
+      });
+    });
+    
+    my $push_event = sub {
+      my ($self, $type) = @_;
+      
+      $self->on(json => sub {
+        my ($tx, $hash) = @_;
+        
+        $hash->{type} = $type;
+        
+        # Send message to children
+        for my $cid (keys %$children) {
+          $children->{$cid}->send(json => $hash);
+        }
+      });
+    };
+    
+    $r->websocket('/task' => sub { $push_event->('task') });
+    $r->websocket('/sync' => sub { $push_event->('sync') });
+  }
+  
+  # Child
+  else {
+    # Parent URL
+    my $parent_host = $config->{parent}{host};
+    croak "(Child) [parent]host is empty" unless defined $parent_host;
+    
+    my $port = Mojo::IOLoop::Server->generate_port;
+    $ENV{MOJO_LISTEN} = "http://*:$port";
+    
+    my $parent_url = "ws://127.0.0.1";
+    my $parent_port = $config->{parent}{port} || '10040';
+    $parent_port = 3000 if $app->mode eq 'development';
+    $parent_url .= ":$parent_port";
+    
+    # Connect to parent
+    my $connect_cb;
+    $connect_cb = sub {
+      my $ua = Mojo::UserAgent->new;
+      $ua->websocket($parent_url => sub {
+        my ($ua, $tx) = @_;
+        
+        if ($tx->is_websocket) {
+          my $local_address = $tx->local_address;
+          my $local_port = $tx->local_port;
+          
+          $tx->on(json => sub {
+            my ($tx, $hash) = @_;
+            
+            my $type = $hash->{type};
+            if ($type eq 'task' || $type eq 'sync') {
+              my $ua = Mojo::UserAgent->new;
+              
+              $ua->websocket("ws://$local_address:$local_port" => sub {
+                my $self = shift;
+
+                # Receive
+                $self->on(json => sub {
+                  my ($tx, $hash) = @_;
+                  
+                  my $type = $hash->{type};
+                  if ($type eq 'task' || $type eq 'sync') {
+                    my @command = @{$hash->{command} || []};
+                    system("./$type", @command);
+                  }
+                });
+              });
+            }
+          });
+        }
+        else {
+          my $error = "(Child) Can't connect to parent: $parent_url.";
+          $app->log->error("$error");
+          Mojo::IOLoop->timer(30 => sub {
+            goto $connect_cb;
+          });
+        }
+      });
+    };
+    $connect_cb->();
+  }
+}

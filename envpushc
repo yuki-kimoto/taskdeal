@@ -1,0 +1,6 @@
+#!/bin/sh
+
+DIR=$(dirname $0)
+PERL5LIB="$DIR/mojo/lib"
+export PERL5LIB
+exec $DIR/mojo/script/hypnotoad $* $DIR/script/envpush

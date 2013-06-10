@@ -1,0 +1,17 @@
+#!/bin/env perl
+
+use FindBin;
+use lib "$FindBin::Bin/mojo/lib";
+
+my $command = shift;
+
+my $app = Mojo::Server->load_app("$FindBin::Bin/script/envpush");
+my $host = $app->config->{parent}{host};
+my $port = $app->config->{parent}{ssh_port};
+my $task_dir = $app->config->{parent}{task_dir}
+  || "$FindBin::Bin/task";
+
+# rsync
+my @cmd = ('rsync', '-e', "ssh -p $ssh_port", '-a', $task_dir, '.');
+system(@cmd) == 0
+  or die "Can't execute rsync command";
