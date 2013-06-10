@@ -1,0 +1,66 @@
+=head2 Tue Jun 11 06:47:04 2013: C<Module> L<Module::CoreList|Module::CoreList>
+
+=over 4
+
+=item *
+
+C<installed into: /home/kimoto/labo/taskdeal/extlib/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.91>
+
+=item *
+
+C<EXE_FILES: corelist>
+
+=back
+
+=head2 Tue Jun 11 06:47:11 2013: C<Module> L<Time::HiRes|Time::HiRes>
+
+=over 4
+
+=item *
+
+C<installed into: /home/kimoto/labo/taskdeal/extlib/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.9725>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Tue Jun 11 06:47:14 2013: C<Module> L<Config::Tiny|Config::Tiny>
+
+=over 4
+
+=item *
+
+C<installed into: /home/kimoto/labo/taskdeal/extlib/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.14>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+

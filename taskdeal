@@ -1,10 +1,79 @@
 use strict;
 use warnings;
 
+use FindBin;
+use lib "$FindBin::Bin/extlib/lib/perl5";
+use lib "$FindBin::Bin/mojo/lib";
+
+use Config::Tiny;
 use Mojo::UserAgent;
 
+use Config::Tiny;
+
+my $config_file = "$FindBin::Bin/taskdeal.conf";
+my $config = Config::Tiny->new->read($config_file);
+
 my $ua = Mojo::UserAgent->new;
+
 $ua->inactivity_timeout(0);
+
+=pod
+    # Parent URL
+    my $parent_host = $config->{parent}{host};
+    croak "(Child) [parent]host is empty" unless defined $parent_host;
+    
+    my $port = Mojo::IOLoop::Server->generate_port;
+    $ENV{MOJO_LISTEN} = "http://*:$port";
+    
+    my $parent_url = "ws://127.0.0.1";
+    my $parent_port = $config->{parent}{port} || '10040';
+    $parent_port = 3000 if $app->mode eq 'development';
+    $parent_url .= ":$parent_port";
+    
+    # Connect to parent
+    my $connect_cb;
+    $connect_cb = sub {
+      my $ua = Mojo::UserAgent->new;
+      $ua->websocket($parent_url => sub {
+        my ($ua, $tx) = @_;
+        
+        if ($tx->is_websocket) {
+          my $local_address = $tx->local_address;
+          my $local_port = $tx->local_port;
+          
+          $tx->on(json => sub {
+            my ($tx, $hash) = @_;
+            
+            my $type = $hash->{type};
+            if ($type eq 'task' || $type eq 'sync') {
+              my $ua = Mojo::UserAgent->new;
+              
+              $ua->websocket("ws://$local_address:$local_port" => sub {
+                my $self = shift;
+
+                # Receive
+                $self->on(json => sub {
+                  my ($tx, $hash) = @_;
+                  
+                  my $type = $hash->{type};
+                  if ($type eq 'task' || $type eq 'sync') {
+                    my @command = @{$hash->{command} || []};
+                    system("./$type", @command);
+                  }
+                });
+              });
+            }
+          });
+        }
+        else {
+          my $error = "(Child) Can't connect to parent: $parent_url.";
+          $app->log->error("$error");
+          Mojo::IOLoop->timer(30 => sub {
+            goto $connect_cb;
+          });
+        }
+      });
+=cut
 
 my $websocket_cb;
 $websocket_cb = sub {

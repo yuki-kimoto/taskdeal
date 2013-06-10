@@ -1,9 +1,95 @@
 use strict;
 use warnings;
 
+use FindBin;
+use lib "$FindBin::Bin/extlib/lib/perl5";
+use lib "$FindBin::Bin/mojo/lib";
 use Mojolicious::Lite;
 
 my $clients = {};
+
+=pod
+  my $self = shift;
+  my $app = $self;
+  
+  # Config
+  my $config = $self->plugin('INIConfig', ext => 'conf');
+  
+  # Workers is always 1
+  my $hypnotoad = $config->{hypnotoad};
+  $hypnotoad->{workers} = 1;
+  
+  # Port
+  my $is_parent = $ENV{ENVPUSH_PARENT};
+  
+  if ($is_parent) {
+    $hypnotoad->{listen} ||= ['http://*:10040'];
+  }
+  
+  # Task directory
+  my $task_dir = $self->home->rel_dir('task');
+
+  my $r = $self->routes;
+  
+  # Parent
+  if ($is_parent) {
+    
+    my $children = {};
+    
+    $r->get('/text' => {text => 'aaa'});
+    
+    $r->websocket('/' => sub {
+      
+      my $self = shift;
+      
+      # Child id
+      my $cid = "$self";
+      
+      # Resist controller
+      $children->{$cid} = $self;
+      
+      # Receive
+      $self->on(json => sub {
+        my ($tx, $hash) = @_;
+        
+        my $remote_address = $tx->remote_address;
+        
+        if (my $message = $hash->{message}) {
+          if ($hash->{error}) {
+            $app->log->error("(Parent) $message(From child $remote_address)");
+          }
+          else {
+            $app->log->info("(Parent) $message(From hild $remote_address)");
+          }
+        }
+      });
+      
+      # Finish
+      $self->on('finish' => sub {
+        # Remove child
+        delete $children->{$cid};
+      });
+    });
+    
+    my $push_event = sub {
+      my ($self, $type) = @_;
+      
+      $self->on(json => sub {
+        my ($tx, $hash) = @_;
+        
+        $hash->{type} = $type;
+        
+        # Send message to children
+        for my $cid (keys %$children) {
+          $children->{$cid}->send(json => $hash);
+        }
+      });
+    };
+    
+    $r->websocket('/task' => sub { $push_event->('task') });
+    $r->websocket('/sync' => sub { $push_event->('sync') });
+  }
+=cut
 
 websocket '/' => sub {
   my $self = shift;
