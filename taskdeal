@@ -17,63 +17,58 @@ my $ua = Mojo::UserAgent->new;
 
 $ua->inactivity_timeout(0);
 
-=pod
-    # Parent URL
-    my $parent_host = $config->{parent}{host};
-    croak "(Child) [parent]host is empty" unless defined $parent_host;
-    
-    my $port = Mojo::IOLoop::Server->generate_port;
-    $ENV{MOJO_LISTEN} = "http://*:$port";
-    
-    my $parent_url = "ws://127.0.0.1";
-    my $parent_port = $config->{parent}{port} || '10040';
-    $parent_port = 3000 if $app->mode eq 'development';
-    $parent_url .= ":$parent_port";
-    
-    # Connect to parent
-    my $connect_cb;
-    $connect_cb = sub {
-      my $ua = Mojo::UserAgent->new;
-      $ua->websocket($parent_url => sub {
-        my ($ua, $tx) = @_;
-        
-        if ($tx->is_websocket) {
-          my $local_address = $tx->local_address;
-          my $local_port = $tx->local_port;
-          
-          $tx->on(json => sub {
-            my ($tx, $hash) = @_;
-            
-            my $type = $hash->{type};
-            if ($type eq 'task' || $type eq 'sync') {
-              my $ua = Mojo::UserAgent->new;
-              
-              $ua->websocket("ws://$local_address:$local_port" => sub {
-                my $self = shift;
+# server URL
+my $server_host = $config->{server}{host} || 'localhost';
+my $server_url = "ws://$server_host";
+$ENV{TASKDEAL_SERVER_PORT} = 3000;
+my $server_port = $ENV{TASKDEAL_SERVER_PORT} || $config->{server}{port} || '10040';
 
-                # Receive
-                $self->on(json => sub {
-                  my ($tx, $hash) = @_;
-                  
-                  my $type = $hash->{type};
-                  if ($type eq 'task' || $type eq 'sync') {
-                    my @command = @{$hash->{command} || []};
-                    system("./$type", @command);
-                  }
-                });
-              });
-            }
-          });
-        }
-        else {
-          my $error = "(Child) Can't connect to parent: $parent_url.";
-          $app->log->error("$error");
-          Mojo::IOLoop->timer(30 => sub {
-            goto $connect_cb;
+$server_url .= ":$server_port";
+
+# Connect to server
+my $connect_cb;
+$connect_cb = sub {
+  my $ua = Mojo::UserAgent->new;
+  $ua->websocket($server_url => sub {
+    my ($ua, $tx) = @_;
+    
+    if ($tx->is_websocket) {
+      my $local_address = $tx->local_address;
+      my $local_port = $tx->local_port;
+      
+      $tx->on(json => sub {
+        my ($tx, $hash) = @_;
+        
+        my $type = $hash->{type};
+        if ($type eq 'task' || $type eq 'sync') {
+          my $ua = Mojo::UserAgent->new;
+          
+          $ua->websocket("ws://$local_address:$local_port" => sub {
+            my $self = shift;
+
+            # Receive
+            $self->on(json => sub {
+              my ($tx, $hash) = @_;
+              
+              my $type = $hash->{type};
+              if ($type eq 'task' || $type eq 'sync') {
+                my @command = @{$hash->{command} || []};
+                system("./$type", @command);
+              }
+            });
           });
         }
       });
-=cut
+    }
+    else {
+      my $error = "(Child) Can't connect to server: $server_url.";
+      app->log->error("$error");
+      Mojo::IOLoop->timer(30 => sub {
+        goto $connect_cb;
+      });
+    }
+  });
+};
 
 my $websocket_cb;
 $websocket_cb = sub {
