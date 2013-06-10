@@ -1,0 +1,24 @@
+use strict;
+use warnings;
+
+use Mojo::UserAgent;
+
+my $ua = Mojo::UserAgent->new;
+$ua->inactivity_timeout(0);
+
+my $websocket_cb;
+$websocket_cb = sub {
+  $ua->websocket('http://localhost:3000' => sub {
+    my ($ua, $tx) = @_;
+    
+    if ($tx->is_websocket) {
+      warn "aaa";
+    }
+    else {
+      warn "bbbb";
+    }
+  });
+};
+$websocket_cb->();
+
+Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
