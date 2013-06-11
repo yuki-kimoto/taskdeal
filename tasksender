@@ -1,0 +1,9 @@
+#!/usr/bin/env perl
+
+use Getopt::Long 'GetOptions';
+
+my $sync;
+GetOptions('sync' => \$sync);
+
+my @args = @ARGV;
+

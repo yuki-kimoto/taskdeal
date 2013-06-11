@@ -10,9 +10,10 @@ use lib "$FindBin::Bin/mojo/lib";
 use Config::Tiny;
 use Mojo::Log;
 use Mojo::UserAgent;
+use Mojo::IOLoop;
 
 # Log
-my $log = Mojo::Log->new(path => "$FindBin::Bin/log");
+my $log = Mojo::Log->new(path => "$FindBin::Bin/log/taskdeal.log");
 
 # Config
 my $config_file = "$FindBin::Bin/taskdeal.conf";
@@ -30,60 +31,66 @@ my $server_port = $ENV{TASKDEAL_SERVER_PORT} || $config->{server}{port} || '1004
 $server_url .= ":$server_port";
 
 # Connect to server
-my $connect_cb;
-$connect_cb = sub {
-  my $ua = Mojo::UserAgent->new;
-  $ua->websocket($server_url => sub {
-    my ($ua, $tx) = @_;
-    
-    if ($tx->is_websocket) {
-      my $local_address = $tx->local_address;
-      my $local_port = $tx->local_port;
-      
-      $tx->on(json => sub {
-        my ($tx, $hash) = @_;
-        
-        my $type = $hash->{type};
-        if ($type eq 'task' || $type eq 'sync') {
-          my $ua = Mojo::UserAgent->new;
-          
-          $ua->websocket("ws://$local_address:$local_port" => sub {
-            my $self = shift;
-
-            # Receive
-            $self->on(json => sub {
-              my ($tx, $hash) = @_;
-              
-              my $type = $hash->{type};
-              if ($type eq 'task' || $type eq 'sync') {
-                my @command = @{$hash->{command} || []};
-                system("./$type", @command);
-              }
-            });
-          });
-        }
-      });
-    }
-    else {
-      my $error = "(Child) Can't connect to server: $server_url.";
-      $log->error("$error");
-      Mojo::IOLoop->timer(30 => sub {
-        goto $connect_cb;
-      });
-    }
-  });
-};
-
 my $websocket_cb;
 $websocket_cb = sub {
   $ua->websocket('http://localhost:3000' => sub {
     my ($ua, $tx) = @_;
     
     if ($tx->is_websocket) {
-      warn "aaa";
+      $log->info("Connect to server: $server_url.");
+      
+      my $local_address = $tx->local_address;
+      my $local_port = $tx->local_port;
+      
+      $tx->on(json => sub {
+        my ($tx, $hash) = @_;
+        
+        my $type = $hash->{type} || '';
+        if ($type eq 'sync' || $type eq 'task') {
+          my $work_dir
+            = $type eq 'sync' ? $FindBin::Bin : "$FindBin::Bin/task";
+          
+          if (chdir $work_dir) {
+            my $command = $type eq 'sync' ? 'sync' : $hash->{command};
+            my $args = $hash->{args} || [];
+            
+            if (system("./$command", @$args) == 0) {
+              my $status = `echo $?`;
+              if (($status || '') =~ /^0/) {
+                my $message = "$type success. Command $command @$args";
+                $log->info($message);
+                $tx->send(json => {message => $message, success => 1});
+              }
+              else {
+                my $message = "$type fail. Command $command @$args. Return bad status.";
+                $log->error($message);
+                $tx->send(json => {message => $message, success => 0});
+              }
+            } else {
+              my $message = "$type fail. Command $command @$args. Command fail.";
+              $log->error($message);
+              $tx->send(json => {message => $message, success => 0});
+            }
+          }
+          else {
+            my $message = "$type fail. Can't change directory $FindBin::Bin: $!";
+            $log->error($message);
+            $tx->send(json => {message => $message, success => 0});
+          }
+        }
+        else {
+          my $message = "Unknown type $type";
+          $log->error($message);
+          $tx->send(json => {message => "Unknown type $type", success => 0});
+        }
+      });
     }
     else {
-      warn "bbbb";
+      my $error = "Can't connect to server: $server_url.";
+      $log->error("$error");
+      Mojo::IOLoop->timer(15 => sub {
+        goto $websocket_cb;
+      });
     }
   });
 };
