@@ -8,23 +8,25 @@ use lib "$FindBin::Bin/extlib/lib/perl5";
 use lib "$FindBin::Bin/mojo/lib";
 
 use Config::Tiny;
+use Mojo::Log;
 use Mojo::UserAgent;
 
-use Config::Tiny;
+# Log
+my $log = Mojo::Log->new(path => "$FindBin::Bin/log");
 
+# Config
 my $config_file = "$FindBin::Bin/taskdeal.conf";
 my $config = Config::Tiny->new->read($config_file);
 
+# User Agent
 my $ua = Mojo::UserAgent->new;
-
 $ua->inactivity_timeout(0);
 
-# server URL
+# Server URL
 my $server_host = $config->{server}{host} || 'localhost';
 my $server_url = "ws://$server_host";
 $ENV{TASKDEAL_SERVER_PORT} = 3000;
 my $server_port = $ENV{TASKDEAL_SERVER_PORT} || $config->{server}{port} || '10040';
-
 $server_url .= ":$server_port";
 
 # Connect to server
@@ -64,7 +66,7 @@ $connect_cb = sub {
     }
     else {
       my $error = "(Child) Can't connect to server: $server_url.";
-      app->log->error("$error");
+      $log->error("$error");
       Mojo::IOLoop->timer(30 => sub {
         goto $connect_cb;
       });
