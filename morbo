@@ -3,5 +3,4 @@
 DIR=$(dirname $0)
 PERL5LIB="$DIR/mojo/lib"
 export PERL5LIB
-export ENVPUSH_PARENT=1
-$DIR/mojo/script/morbo $* $DIR/script/envpush
+exec $DIR/mojo/script/morbo $* $DIR/script/taskdeald
