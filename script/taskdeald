@@ -4,14 +4,14 @@ use strict;
 use warnings;
 
 use FindBin;
-use lib "$FindBin::Bin/extlib/lib/perl5";
-use lib "$FindBin::Bin/mojo/lib";
+use lib "$FindBin::Bin/../extlib/lib/perl5";
+use lib "$FindBin::Bin/../mojo/lib";
+use lib "$FindBin::Bin/../lib";
 BEGIN { $ENV{MOJO_HOME} = "$FindBin::Bin/.." }
 use Mojolicious::Lite;
+use Taskdeal::API;
 
-my $debug = $ENV{TASKDEAL_DEBUG};
-
-my $clients = {};
+app->helper(api => sub { Taskdeal::API->new(cntl => shift) });
 
 # Config
 my $config = plugin('INIConfig', ext => 'conf');
@@ -23,70 +23,79 @@ $hypnotoad->{workers} = 1;
 # Tasks directory
 my $tasks_dir = app->home->rel_dir('tasks');
 
+# Clients
+my $clients = {};
+
 # Receive
 websocket '/' => sub {
   my $self = shift;
   
-  # Child id
+  # Client id
   my $object_id = "$self";
   my ($cid) = $object_id =~ /\(0x(.+?)\)$/;
   
   # Resist controller
   $clients->{$cid}{controller} = $self;
   
-  # Remote host
-  $clients->{$cid}{host} = $self->tx->remote_address;
+  # Client host
+  my $client_host = $self->tx->remote_address;
+  $clients->{$cid}{host} = $client_host;
   
   # Remote port
-  $clients->{$cid}{port} = $self->tx->remote_port;
+  my $client_port = $self->tx->remote_port;
+  $clients->{$cid}{port} = $client_port;
   
-  # Receive
+  my $client_info = sub {
+    return "Client $client_host:$client_port (ID:$cid)";
+  };
+  
+  # Connected message
+  $self->api->log('info', $client_info->() . " is connected");
+  
+  # Receive client result
   $self->on(json => sub {
-    my ($tx, $hash) = @_;
+    my ($tx, $result) = @_;
     
-    my $remote_address = $tx->remote_address;
-    
-    if (my $message = $hash->{message}) {
-      if ($hash->{error}) {
-        app->log->error("$message from child $remote_address)");
+    if (my $message = $result->{message}) {
+      if ($result->{error}) {
+        $self->api->log('error', $client_info->() . " send error message");
       }
       else {
-        app->log->info("$message from child $remote_address)");
+        $self->api->log('info', $client_info->() . " send success message");
       }
     }
   });
   
-  # Finish
+  # Client disconnected
   $self->on('finish' => sub {
-    # Remove child
+    # Remove client
     delete $clients->{$cid};
-    warn "finish";
-  });
-  
-  warn "Websocket is connected" if $debug;
-};
-
-my $push_event = sub {
-  my ($self, $type) = @_;
-  
-  $self->on(json => sub {
-    my ($tx, $hash) = @_;
-    
-    $hash->{type} = $type;
-    
-    # Send message to clients
-    for my $cid (keys %$clients) {
-      $clients->{$cid}{controller}->send(json => $hash);
-    }
+    $self->api->log('info', $client_info->() . " is disconnected");
   });
 };
 
-websocket '/task' => sub { $push_event->('task') };
-websocket '/sync' => sub { $push_event->('sync') };
-get '/clients.json' => sub {
+post '/task' => sub {
   my $self = shift;
   
-  return $self->render(json => $clients);
+  my $cid = $self->param('id');
+  my $command = $self->param('command');
+  
+  $clients->{$cid}{controller}->send(json => {
+    type => 'task',
+    command => $command
+  });
+};
+
+post '/sync' => sub {
+  my $self = shift;
+  
+  my $cid = $self->param('id');
+  my $task = $self->param('task');
+  
+  $clients->{$cid}{controller}->send(json => {
+    type => 'sync',
+    task => $task
+  });
 };
 
 get '/' => sub {

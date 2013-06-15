@@ -6,12 +6,12 @@
   <h3>Clients</h3>
 
   <table class="table">
+    <tr>
+      <th>Client ID</th>
+      <th>Host</th>
+      <th>Port</th>
+    </tr>
     % for my $cid (sort keys %$clients) {
-      <tr>
-        <th>Client ID</th>
-        <th>Host</th>
-        <th>Port</th>
-      </tr>
       <tr>
         % my $client = $clients->{$cid};
         % my $host = $client->{host};
