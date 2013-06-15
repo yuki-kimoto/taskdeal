@@ -1,9 +1,18 @@
 #!/usr/bin/env perl
 
-use Getopt::Long 'GetOptions';
+use strict;
+use warnings;
 
-my $sync;
-GetOptions('sync' => \$sync);
+use FindBin;
+use lib "$FindBin::Bin/extlib/lib/perl5";
+use lib "$FindBin::Bin/mojo/lib";
 
-my @args = @ARGV;
+use Config::Tiny;
+use Mojo::Log;
+use Mojo::UserAgent;
 
+my $ua = Mojo::UserAgent
+my $res = $ua->get('http://localhost:3000');
+my $data = $res->json;
+use Data::Dumper;
+print Dumper $data;

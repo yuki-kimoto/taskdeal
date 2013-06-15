@@ -1,0 +1,28 @@
+% layout 'common';
+
+%= include '/include/header';
+
+<div class="container">
+  <h3>Clients</h3>
+
+  <table class="table">
+    % for my $cid (sort keys %$clients) {
+      <tr>
+        <th>Client ID</th>
+        <th>Host</th>
+        <th>Port</th>
+      </tr>
+      <tr>
+        % my $client = $clients->{$cid};
+        % my $host = $client->{host};
+        % my $port = $client->{port};
+        
+        <td><%= $cid %></td>
+        <td><%= $host %></td>
+        <td><%= $port %></td>
+      </tr>
+    % }
+  </table>
+</div>
+
+%= include '/include/footer';

@@ -1,3 +1,5 @@
+#!/usr/bin/env perl
+
 use strict;
 use warnings;
 
@@ -6,6 +8,8 @@ use lib "$FindBin::Bin/extlib/lib/perl5";
 use lib "$FindBin::Bin/mojo/lib";
 BEGIN { $ENV{MOJO_HOME} = "$FindBin::Bin/.." }
 use Mojolicious::Lite;
+
+my $debug = $ENV{TASKDEAL_DEBUG};
 
 my $clients = {};
 
@@ -16,17 +20,25 @@ my $config = plugin('INIConfig', ext => 'conf');
 my $hypnotoad = $config->{hypnotoad};
 $hypnotoad->{workers} = 1;
 
-# Task directory
-my $task_dir = app->home->rel_dir('task');
+# Tasks directory
+my $tasks_dir = app->home->rel_dir('tasks');
 
-websocket '/connect' => sub {
+# Receive
+websocket '/' => sub {
   my $self = shift;
   
   # Child id
-  my $cid = "$self";
+  my $object_id = "$self";
+  my ($cid) = $object_id =~ /\(0x(.+?)\)$/;
   
   # Resist controller
-  $clients->{$cid} = $self;
+  $clients->{$cid}{controller} = $self;
+  
+  # Remote host
+  $clients->{$cid}{host} = $self->tx->remote_address;
+  
+  # Remote port
+  $clients->{$cid}{port} = $self->tx->remote_port;
   
   # Receive
   $self->on(json => sub {
@@ -36,10 +48,10 @@ websocket '/connect' => sub {
     
     if (my $message = $hash->{message}) {
       if ($hash->{error}) {
-        app->log->error("(Parent) $message(From child $remote_address)");
+        app->log->error("$message from child $remote_address)");
       }
       else {
-        app->log->info("(Parent) $message(From hild $remote_address)");
+        app->log->info("$message from child $remote_address)");
       }
     }
   });
@@ -48,7 +60,10 @@ websocket '/connect' => sub {
   $self->on('finish' => sub {
     # Remove child
     delete $clients->{$cid};
+    warn "finish";
   });
+  
+  warn "Websocket is connected" if $debug;
 };
 
 my $push_event = sub {
@@ -61,110 +76,25 @@ my $push_event = sub {
     
     # Send message to clients
     for my $cid (keys %$clients) {
-      $clients->{$cid}->send(json => $hash);
+      $clients->{$cid}{controller}->send(json => $hash);
     }
   });
 };
 
 websocket '/task' => sub { $push_event->('task') };
 websocket '/sync' => sub { $push_event->('sync') };
-
-websocket '/' => sub {
+get '/clients.json' => sub {
   my $self = shift;
-
-  # Client id
-  my $cid = "$self";
   
-  # Resist controller
-  $clients->{$cid} = $self;
-  
-  # Receive message
-  $self->on('message' => sub {
-    my ($self, $message) = @_;
-    
-    # Send message to all clients
-    for my $cid (keys %$clients) {
-      $clients->{$cid}->send($message);
-    }
-  });
-  
-  # Finish
-  $self->on('finish' => sub {
-      
-    # Remove client
-    delete $clients->{$cid};
-  });
+  return $self->render(json => $clients);
 };
 
-get '/' => 'index';
+get '/' => sub {
+  my $self = shift;
+  
+  $self->render('/index', clients => $clients)
+};
 
 $ENV{MOJO_INACTIVITY_TIMEOUT} = 0;
 
 app->start;
-
-__DATA__
-
-@@ index.html.ep
-% my $url = $self->req->url->to_abs->scheme($self->req->is_secure ? 'wss' : 'ws')->path( '/' );
-% warn "$url";
-<!doctype html>
-<html>
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <title>Mojo Websocket Demo</title>
-
-  <script type="text/javascript">
-    // only load the flash fallback when needed
-    if ( !( 'WebSocket' in window ) ) {
-      document.write([
-        '<scr'+'ipt type="text/javascript" src="web-socket-js/swfobject.js"></scr'+'ipt>',
-        '<scr'+'ipt type="text/javascript" src="web-socket-js/FABridge.js"></scr'+'ipt>',
-        '<scr'+'ipt type="text/javascript" src="web-socket-js/web_socket.js"></scr'+'ipt>'
-      ].join(''));
-    }
-  </script>
-  <script type="text/javascript">
-    if ( WebSocket.__initialize ) {
-      // Set URL of your WebSocketMain.swf here:
-      WebSocket.__swfLocation = 'web-socket-js/WebSocketMain.swf';
-    }
-
-    // example copied from web-socket-js/sample.html
-    var ws, input, clock;
-
-    function init() {
-      
-      // Connect to Web Socket.
-      ws = new WebSocket('<%= $url %>');
-      
-      // Receive message
-      ws.onmessage = function(e) {
-        // Write message
-        var message = document.createElement('div');
-        message.appendChild(document.createTextNode(e.data));
-        var display = document.getElementById( 'display' );
-        display.appendChild(message);
-      };
-    }
-
-    function sendChatMessage() {
-      var input = document.getElementById('message-box');
-      var message = input.value;
-      
-      // Send message
-      ws.send(message);
-      input.value = "";
-    }
-    
-    window.onload = init;
-  </script>
-</head>
-<body>
-<div id="display" style="width:500px; height:200px; border:1px solid black"></div>
-
-<form onsubmit="sendChatMessage(); return false;">
-  <input size="60" type="text" id="message-box">
-  <input type="submit" onclick="sendChatMessage(); return false;" value=Send >
-</form>
-</body>
-</html>

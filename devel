@@ -1,0 +1,6 @@
+#!/bin/sh
+
+DIR=$(dirname $0)
+export TASKDEAL_DEBUG=1;
+export TASKDEAL_SERVER_PORT=3000;
+exec $DIR/script/taskdeal
