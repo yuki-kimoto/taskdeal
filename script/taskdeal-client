@@ -6,16 +6,16 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../extlib/lib/perl5";
 use lib "$FindBin::Bin/../mojo/lib";
+use lib "$FindBin::Bin/../lib";
 
 use Config::Tiny;
-use Mojo::Log;
+use Taskdeal::Client::Log;
 use Mojo::UserAgent;
 use Mojo::IOLoop;
-
-my $debug = $ENV{TASKDEAL_DEBUG};
+use Sys::Hostname 'hostname';
 
 # Log
-my $log = Mojo::Log->new(path => "$FindBin::Bin/../log/taskdeal.log");
+my $log = Taskdeal::Client::Log->new(path => "$FindBin::Bin/../log/taskdeal.log");
 
 # Config
 my $config_file = "$FindBin::Bin/taskdeal.conf";
@@ -40,8 +40,7 @@ $websocket_cb = sub {
     
     if ($tx->is_websocket) {
       my $connect_message = "Connect to server: $server_url.";
-      $log->info($connect_message);
-      warn $connect_message if $debug;
+      $log->log('info', $connect_message);
       
       my $local_address = $tx->local_address;
       my $local_port = $tx->local_port;
@@ -52,7 +51,6 @@ $websocket_cb = sub {
         Mojo::IOLoop->timer(10 => sub {
           goto $websocket_cb;
         });
-        warn $message if $debug;
       });
       
       $tx->on(json => sub {

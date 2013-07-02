@@ -4,4 +4,4 @@ DIR=$(dirname $0)
 PERL5LIB="$DIR/mojo/lib"
 export TASKDEAL_DEBUG=1;
 export PERL5LIB
-exec $DIR/mojo/script/morbo $* $DIR/script/taskdeald
+exec $DIR/mojo/script/morbo $* $DIR/script/taskdeal-server

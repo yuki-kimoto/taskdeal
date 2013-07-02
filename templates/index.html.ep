@@ -10,6 +10,8 @@
       <th>Client ID</th>
       <th>Host</th>
       <th>Port</th>
+      <th>Type</th>
+      <th>Task</th>
     </tr>
     % for my $cid (sort keys %$clients) {
       <tr>
@@ -20,6 +22,8 @@
         <td><%= $cid %></td>
         <td><%= $host %></td>
         <td><%= $port %></td>
+        <td>Midium<button class="btn btn-mini">Sync</button></td>
+        <td>install-httpd<button class="btn btn-mini">Execute</button></td>
       </tr>
     % }
   </table>
