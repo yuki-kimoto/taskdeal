@@ -10,12 +10,13 @@ use lib "$FindBin::Bin/../lib";
 BEGIN { $ENV{MOJO_HOME} = "$FindBin::Bin/.." }
 use Mojolicious::Lite;
 use Taskdeal::Log;
-use Data::Dumper 'Dumper';
+use Taskdeal::Server;
+
+# Home
+my $home = "$FindBin::Bin/..";
 
 # Log
-my $log = Taskdeal::Log->new(path => "$FindBin::Bin/../log/taskdeal-server.log");
-
-app->helper(api => sub { Taskdeal::API->new(cntl => shift) });
+my $log = Taskdeal::Log->new(path => "$home/log/taskdeal-server.log");
 
 # Config
 my $config = plugin('INIConfig', ext => 'conf');
@@ -26,6 +27,9 @@ $hypnotoad->{workers} = 1;
 
 # Tasks directory
 my $tasks_dir = app->home->rel_dir('tasks');
+
+# Server
+my $server = Taskdeal::Server->new(home => $home);
 
 # Clients
 my $clients = {};
@@ -95,7 +99,7 @@ websocket '/' => sub {
     # Remove client
     my $info = $client_info->();
     delete $clients->{$cid};
-    $log->info("Clinet Disconnect. " . $info);
+    $log->info("Client Disconnect. " . $info);
   });
 };
 
@@ -126,7 +130,15 @@ post '/sync' => sub {
 get '/' => sub {
   my $self = shift;
   
-  $self->render('/index', clients => $clients)
+  # Roles
+  my $roles = $server->roles;
+  
+  # Render
+  $self->render(
+    '/index',
+    clients => $clients,
+    roles => $roles
+  );
 };
 
 $ENV{MOJO_INACTIVITY_TIMEOUT} = 0;

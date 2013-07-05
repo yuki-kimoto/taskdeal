@@ -5,6 +5,15 @@
 <div class="container">
   <h3>Clients</h3>
 
+  %= stylesheet begin
+    .table tr td {
+      vertical-align:middle;
+      padding:0 5px;
+    }
+  % end
+  
+  <%= select_field roles => ['aaa'], style => "width:100px;padding:0;height:22px;margin-right:5px" %><button class="btn" style="margin:0;padding:0 4px;height:20px;">Sync</button>
+  
   <table class="table">
     <tr>
       <th>ID</th>
@@ -31,8 +40,8 @@
         <td><%= $description %></td>
         <td><%= $host %></td>
         <td><%= $port %></td>
-        <td>Midium<button class="btn btn-mini">Sync</button></td>
-        <td>install-httpd<button class="btn btn-mini">Execute</button></td>
+        <td><%= select_field roles => $roles, style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %><button class="btn" style="margin:0;padding:0 4px;height:20px;">Sync</button></td>
+        <td>install-httpd<button class="btn">Execute</button></td>
       </tr>
     % }
   </table>

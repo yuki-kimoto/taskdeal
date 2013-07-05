@@ -15,6 +15,9 @@ use Mojo::UserAgent;
 use Mojo::IOLoop;
 use Sys::Hostname 'hostname';
 
+# Reconnet interval
+my $reconnect_interval = 5;
+
 # Log
 my $log = Taskdeal::Log->new(path => "$FindBin::Bin/../log/taskdeal-client.log");
 
@@ -125,7 +128,7 @@ $websocket_cb = sub {
         $log->info("Connection is closed.");
         
         # Reconnect to server
-        Mojo::IOLoop->timer(10 => sub { goto $websocket_cb });
+        Mojo::IOLoop->timer($reconnect_interval => sub { goto $websocket_cb });
       });
     }
     
@@ -134,7 +137,7 @@ $websocket_cb = sub {
       $log->error("Can't connect to server: $server_url.");
       
       # Reconnect to server
-      Mojo::IOLoop->timer(10 => sub { goto $websocket_cb });
+      Mojo::IOLoop->timer($reconnect_interval => sub { goto $websocket_cb });
     }
   });
 };
