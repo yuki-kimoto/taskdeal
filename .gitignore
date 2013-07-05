@@ -21,7 +21,7 @@ files/*
 run.d/*
 !run.d/.gitignore
 extlib/*
-task_server/*
-!task_server/.gitdironly
-task_client/*
-!task_client/.gitdironly
+roles/*
+!roles/.gitdironly
+role_client/*
+!role_client/.gitdironly

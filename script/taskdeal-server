@@ -50,18 +50,26 @@ websocket '/' => sub {
   };
   
   # Connected message
-  $self->api->log('info', $client_info->() . " is connected");
+  $self->api->log('info', $client_info->() . ": Connected");
   
   # Receive client result
   $self->on(json => sub {
     my ($tx, $result) = @_;
     
-    if (my $message = $result->{message}) {
-      if ($result->{error}) {
-        $self->api->log('error', $client_info->() . " send error message");
-      }
-      else {
-        $self->api->log('info', $client_info->() . " send success message");
+    my $type = $result->{type} || '';
+    
+    if ($type eq 'client_info') {
+      $clients->{$cid}{current_task} = $result->{current_task};
+      $self->api->log('info', $client_info->() . ": Send client information");
+    }
+    else {
+      if (my $message = $result->{message}) {
+        if ($result->{error}) {
+          $self->api->log('error', $client_info->() . " send error message");
+        }
+        else {
+          $self->api->log('info', $client_info->() . " send success message");
+        }
       }
     }
   });
@@ -70,7 +78,7 @@ websocket '/' => sub {
   $self->on('finish' => sub {
     # Remove client
     delete $clients->{$cid};
-    $self->api->log('info', $client_info->() . " is disconnected");
+    $self->api->log('info', $client_info->() . ": Disconnected");
   });
 };
 

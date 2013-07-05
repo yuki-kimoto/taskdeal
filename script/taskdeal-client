@@ -10,12 +10,18 @@ use lib "$FindBin::Bin/../lib";
 
 use Config::Tiny;
 use Taskdeal::Client::Log;
+use Taskdeal::Client::Util;
 use Mojo::UserAgent;
 use Mojo::IOLoop;
 use Sys::Hostname 'hostname';
+use Scalar::Util 'weaken';
 
 # Log
 my $log = Taskdeal::Client::Log->new(path => "$FindBin::Bin/../log/taskdeal.log");
+
+# Util
+my $util = Taskdeal::Client::Util->new(home => "$FindBin::Bin/..");
+$util->log($log);
 
 # Config
 my $config_file = "$FindBin::Bin/taskdeal.conf";
@@ -35,24 +41,19 @@ $server_url .= ":$server_port";
 # Connect to server
 my $websocket_cb;
 $websocket_cb = sub {
-  $ua->websocket('http://localhost:3000' => sub {
+  $ua->websocket($server_url => sub {
     my ($ua, $tx) = @_;
     
+    # Web socket connection success
     if ($tx->is_websocket) {
-      my $connect_message = "Connect to server: $server_url.";
-      $log->log('info', $connect_message);
+      $log->info("Connect to server: $server_url.");
       
-      my $local_address = $tx->local_address;
-      my $local_port = $tx->local_port;
+      # Send client info
+      my $hostname = hostname;
+      my $current_role = $util->current_role;
+      $tx->send({json => {type => 'client_info', current_role => $current_role}});
       
-      $tx->on(finish => sub {
-        my $message = "Connection is closed.";
-        $log->info($message);
-        Mojo::IOLoop->timer(10 => sub {
-          goto $websocket_cb;
-        });
-      });
-      
+      # Receive JSON message
       $tx->on(json => sub {
         my ($tx, $hash) = @_;
         
@@ -95,13 +96,22 @@ $websocket_cb = sub {
           $tx->send(json => {message => "Unknown type $type", success => 0});
         }
       });
-    }
-    else {
-      my $error = "Can't connect to server: $server_url.";
-      $log->error("$error");
-      Mojo::IOLoop->timer(10 => sub {
-        goto $websocket_cb;
+      
+      # Finish websocket connection
+      $tx->on(finish => sub {
+        $log->info("Connection is closed.");
+        
+        # Reconnect to server
+        Mojo::IOLoop->timer(10 => sub { goto $websocket_cb });
       });
+    }
+    
+    # Web socket connection fail
+    else {
+      $log->error("Can't connect to server: $server_url.");
+      
+      # Reconnect to server
+      Mojo::IOLoop->timer(10 => sub { goto $websocket_cb });
     }
   });
 };
