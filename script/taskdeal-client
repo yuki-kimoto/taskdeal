@@ -23,8 +23,23 @@ my $client = Taskdeal::Client->new(home => "$FindBin::Bin/..");
 $client->log($log);
 
 # Config
-my $config_file = "$FindBin::Bin/taskdeal.conf";
-my $config = Config::Tiny->new->read($config_file);
+my $ct = Config::Tiny->new;
+my $config_file = "$FindBin::Bin/../taskdeal-client.conf";
+my $config = $ct->read($config_file);
+die "Config read error $config_file: " . $ct->errstr if $ct->errstr;
+
+# Config for development
+my $config_my_file = "$FindBin::Bin/../taskdeal-client.my.conf";
+if (-f $config_my_file) {
+  my $config_my = $ct->read($config_my_file);
+  die "Config read error: $config_my_file" . $ct->errstr if $ct->errstr;
+
+  # Merge config
+  for my $section (keys %$config_my) {
+    $config->{$section}
+      = {%{$config->{$section} || {}}, %{$config_my->{$section} || {}}};
+  }
+}
 
 # User Agent
 my $ua = Mojo::UserAgent->new;
@@ -45,12 +60,22 @@ $websocket_cb = sub {
     
     # Web socket connection success
     if ($tx->is_websocket) {
-      $log->info("Connected to $server_url.");
+      $log->info("Connect to $server_url.");
       
       # Send client info
       my $hostname = hostname;
       my $current_role = $client->current_role;
-      $tx->send({json => {type => 'client_info', current_role => $current_role}});
+      my $name = $config->{client}{name};
+      my $group = $config->{client}{group};
+      my $description = $config->{client}{description};
+      
+      $tx->send({json => {
+        type => 'client_info',
+        current_role => $current_role,
+        name => $name,
+        group => $group,
+        description => $description
+      }});
       
       # Receive JSON message
       $tx->on(json => sub {

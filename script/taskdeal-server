@@ -10,6 +10,7 @@ use lib "$FindBin::Bin/../lib";
 BEGIN { $ENV{MOJO_HOME} = "$FindBin::Bin/.." }
 use Mojolicious::Lite;
 use Taskdeal::Log;
+use Data::Dumper 'Dumper';
 
 # Log
 my $log = Taskdeal::Log->new(path => "$FindBin::Bin/../log/taskdeal-server.log");
@@ -49,11 +50,19 @@ websocket '/' => sub {
   $clients->{$cid}{port} = $client_port;
   
   my $client_info = sub {
-    return "Client $client_host:$client_port (ID:$cid)";
+    
+    my $name = $clients->{$cid}{name};
+    my $group = $clients->{$cid}{group};
+    my $info = "[";
+    $info .= "Name:$name, " if defined $name;
+    $info .= "Group:$group, " if defined $group;
+    $info .= "Host:$client_host:$client_port, ID:$cid]";
+    
+    return $info;
   };
   
   # Connected message
-  $log->info($client_info->() . ": Connected");
+  $log->info("Success Websocket Handshake. " . $client_info->());
   
   # Receive client result
   $self->on(json => sub {
@@ -63,7 +72,11 @@ websocket '/' => sub {
     
     if ($type eq 'client_info') {
       $clients->{$cid}{current_task} = $result->{current_task};
-      $log->info($client_info->() . ": Send client information");
+      $clients->{$cid}{name} = $result->{name};
+      $clients->{$cid}{group} = $result->{group};
+      $clients->{$cid}{description} = $result->{description};
+      
+      $log->info("Client Connect. " . $client_info->());
     }
     else {
       if (my $message = $result->{message}) {
@@ -80,8 +93,9 @@ websocket '/' => sub {
   # Client disconnected
   $self->on('finish' => sub {
     # Remove client
+    my $info = $client_info->();
     delete $clients->{$cid};
-    $log->info($client_info->() . ": Disconnected");
+    $log->info("Clinet Disconnect. " . $info);
   });
 };
 

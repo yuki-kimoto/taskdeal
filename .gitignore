@@ -25,3 +25,4 @@ roles/*
 !roles/.gitdironly
 role_client/*
 !role_client/.gitdironly
+taskdeal-client.my.conf
