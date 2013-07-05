@@ -7,19 +7,28 @@
 
   <table class="table">
     <tr>
-      <th>Client ID</th>
+      <th>ID</th>
+      <th>Group</th>
+      <th>Name</th>
+      <th>Description</th>
       <th>Host</th>
       <th>Port</th>
-      <th>Type</th>
+      <th>Role</th>
       <th>Task</th>
     </tr>
     % for my $cid (sort keys %$clients) {
       <tr>
         % my $client = $clients->{$cid};
+        % my $group = $client->{group};
+        % my $name = $client->{name};
+        % my $description = $client->{description};
         % my $host = $client->{host};
         % my $port = $client->{port};
         
         <td><%= $cid %></td>
+        <td><%= $group %></td>
+        <td><%= $name %></td>
+        <td><%= $description %></td>
         <td><%= $host %></td>
         <td><%= $port %></td>
         <td>Midium<button class="btn btn-mini">Sync</button></td>

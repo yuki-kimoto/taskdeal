@@ -7,7 +7,7 @@
     <meta charset="UTF-8">
     <meta name="robots" content="index, nofollow" >
     % my $title = stash('title');
-    <title><%= $title ? "$title \x{30fb} Gitprep" : 'Gitprep' %></title>
+    <title><%= $title ? "$title \x{30fb} Taskdeal" : 'Taskdeal' %></title>
     %= stylesheet '/css/bootstrap.min.css', rel => 'stylesheet', media => 'screen';
     % for my $stylesheet (@$stylesheets) {
       %= stylesheet $stylesheet;
@@ -15,7 +15,7 @@
     %= javascript '/js/jquery-1.9.0.min.js';
     %= javascript '/js/bootstrap.min.js';
     
-    <link rel="shortcut icon" href="<%= url_for('/git-favicon.png') %>" type="image/png" >
+    <link rel="shortcut icon" href="<%= url_for('/favicon.png') %>" type="image/png" >
   </head>
   <body>
     %= stylesheet begin

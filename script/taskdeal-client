@@ -62,13 +62,12 @@ $websocket_cb = sub {
     if ($tx->is_websocket) {
       $log->info("Connect to $server_url.");
       
-      # Send client info
+      # Send client information
       my $hostname = hostname;
       my $current_role = $client->current_role;
       my $name = $config->{client}{name};
       my $group = $config->{client}{group};
       my $description = $config->{client}{description};
-      
       $tx->send({json => {
         type => 'client_info',
         current_role => $current_role,
