@@ -12,6 +12,8 @@ use Mojolicious::Lite;
 use Taskdeal::Log;
 use Taskdeal::Server;
 
+app->attr('server');
+
 # Home
 my $home = "$FindBin::Bin/..";
 
@@ -30,6 +32,7 @@ my $tasks_dir = app->home->rel_dir('tasks');
 
 # Server
 my $server = Taskdeal::Server->new(home => $home);
+app->server($server);
 
 # Clients
 my $clients = {};
@@ -130,15 +133,21 @@ post '/sync' => sub {
 get '/' => sub {
   my $self = shift;
   
-  # Roles
-  my $roles = $server->roles;
-  
   # Render
   $self->render(
     '/index',
     clients => $clients,
-    roles => $roles
   );
+};
+
+get '/api/tasks.json' => sub {
+  my $self = shift;
+  
+  my $role = $self->param('role');
+  
+  my $tasks = $server->tasks($role);
+  
+  $self->render(json => {tasks => $tasks});
 };
 
 $ENV{MOJO_INACTIVITY_TIMEOUT} = 0;

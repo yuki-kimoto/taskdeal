@@ -1,50 +1,92 @@
+<%
+  my $roles = app->server->roles;
+%>
+
 % layout 'common';
 
-%= include '/include/header';
+  %= include '/include/header';
 
-<div class="container">
-  <h3>Clients</h3>
-
-  %= stylesheet begin
-    .table tr td {
-      vertical-align:middle;
-      padding:0 5px;
-    }
-  % end
-  
-  <%= select_field roles => ['aaa'], style => "width:100px;padding:0;height:22px;margin-right:5px" %><button class="btn" style="margin:0;padding:0 4px;height:20px;">Sync</button>
-  
-  <table class="table">
-    <tr>
-      <th>ID</th>
-      <th>Group</th>
-      <th>Name</th>
-      <th>Description</th>
-      <th>Host</th>
-      <th>Port</th>
-      <th>Role</th>
-      <th>Task</th>
-    </tr>
-    % for my $cid (sort keys %$clients) {
-      <tr>
-        % my $client = $clients->{$cid};
-        % my $group = $client->{group};
-        % my $name = $client->{name};
-        % my $description = $client->{description};
-        % my $host = $client->{host};
-        % my $port = $client->{port};
+  %= javascript begin
+    $(document).ready(function () {
+      
+      $("[name=role]").on('change', function () {
+        var role = $(this).val();
         
-        <td><%= $cid %></td>
-        <td><%= $group %></td>
-        <td><%= $name %></td>
-        <td><%= $description %></td>
-        <td><%= $host %></td>
-        <td><%= $port %></td>
-        <td><%= select_field roles => $roles, style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %><button class="btn" style="margin:0;padding:0 4px;height:20px;">Sync</button></td>
-        <td>install-httpd<button class="btn">Execute</button></td>
-      </tr>
-    % }
-  </table>
-</div>
+        if (role === '') {
+          return;
+        }
+        
+        var task_select = $(this).closest('tr').find('[name=task]');
+        task_select.empty();
+        task_select.append('<option value="">-</option>');
+        
+        $.get("<%= url_for('/api/tasks.json') %>", {role:role}, function (result) {
+          var tasks = result.tasks;
+          
+          if (tasks) {
+            for (var i = 0; i < tasks.length; i++) {
+              var task = tasks[i];
+              task_select.append('<option value="' + task + '">' + task + '</option>');
+            }
+          }
+        });
+        
+      });
+      
+    });
+  % end
 
-%= include '/include/footer';
+  <div class="container">
+    <h3>Clients</h3>
+
+    %= stylesheet begin
+      .table tr td {
+        vertical-align:middle;
+        padding:0 5px;
+      }
+    % end
+    
+    <%= select_field roles => ['aaa'], style => "width:100px;padding:0;height:22px;margin-right:5px" %><button class="btn" style="margin:0;padding:0 4px;height:20px;">Sync</button>
+    
+    <table class="table">
+      <tr>
+        <th>ID</th>
+        <th>Group</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Host</th>
+        <th>Port</th>
+        <th>Role</th>
+        <th>Task</th>
+      </tr>
+      % for my $cid (sort keys %$clients) {
+        <tr>
+          % my $client = $clients->{$cid};
+          % my $group = $client->{group};
+          % my $name = $client->{name};
+          % my $description = $client->{description};
+          % my $host = $client->{host};
+          % my $port = $client->{port};
+          % my $current_role = $client->{current_role};
+          % $current_role = '' unless defined $current_role;
+          
+          <td><%= $cid %></td>
+          <td><%= $group %></td>
+          <td><%= $name %></td>
+          <td><%= $description %></td>
+          <td><%= $host %></td>
+          <td><%= $port %></td>
+          <td>
+            % param(role => $current_role);
+            <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
+            <button class="btn" style="margin:0;padding:0 4px;height:20px;">Sync</button>
+          </td>
+          <td>
+            <%= select_field task => [['-' => ''], 'install-httpd'], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %><button class="btn" style="margin:0;padding:0 4px;height:20px;">Execute</button>
+          </td>
+        </tr>
+      % }
+    </table>
+  </div>
+
+  %= include '/include/footer';
