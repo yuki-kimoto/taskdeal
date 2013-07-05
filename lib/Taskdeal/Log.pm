@@ -1,4 +1,4 @@
-package Taskdeal::Client::Log;
+package Taskdeal::Log;
 use Mojo::Base 'Mojo::Log';
 
 sub log {
@@ -6,7 +6,7 @@ sub log {
 
   my ($pkg, $file, $line) = caller;
   $self->SUPER::log($level, $message);
-  warn "$message at $file line $line\n" if $ENV{TASKDEAL_DEBUG};
+  warn "$message\n" if $ENV{TASKDEAL_DEBUG};
 }
 
 1;

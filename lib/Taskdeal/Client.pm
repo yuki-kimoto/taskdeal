@@ -1,4 +1,4 @@
-package Taskdeal::Client::Util;
+package Taskdeal::Client;
 use Mojo::Base -base;
 
 use Carp 'croak';

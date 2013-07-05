@@ -9,19 +9,18 @@ use lib "$FindBin::Bin/../mojo/lib";
 use lib "$FindBin::Bin/../lib";
 
 use Config::Tiny;
-use Taskdeal::Client::Log;
-use Taskdeal::Client::Util;
+use Taskdeal::Log;
+use Taskdeal::Client;
 use Mojo::UserAgent;
 use Mojo::IOLoop;
 use Sys::Hostname 'hostname';
-use Scalar::Util 'weaken';
 
 # Log
-my $log = Taskdeal::Client::Log->new(path => "$FindBin::Bin/../log/taskdeal.log");
+my $log = Taskdeal::Log->new(path => "$FindBin::Bin/../log/taskdeal-client.log");
 
 # Util
-my $util = Taskdeal::Client::Util->new(home => "$FindBin::Bin/..");
-$util->log($log);
+my $client = Taskdeal::Client->new(home => "$FindBin::Bin/..");
+$client->log($log);
 
 # Config
 my $config_file = "$FindBin::Bin/taskdeal.conf";
@@ -46,11 +45,11 @@ $websocket_cb = sub {
     
     # Web socket connection success
     if ($tx->is_websocket) {
-      $log->info("Connect to server: $server_url.");
+      $log->info("Connected to $server_url.");
       
       # Send client info
       my $hostname = hostname;
-      my $current_role = $util->current_role;
+      my $current_role = $client->current_role;
       $tx->send({json => {type => 'client_info', current_role => $current_role}});
       
       # Receive JSON message
