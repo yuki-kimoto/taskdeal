@@ -37,6 +37,22 @@ app->server($server);
 # Clients
 my $clients = {};
 
+my $client_info = sub {
+  my $cid = shift;
+  
+  my $name = $clients->{$cid}{name};
+  my $group = $clients->{$cid}{group};
+  my $host = $clients->{$cid}{host};
+  my $port = $clients->{$cid}{port};
+  
+  my $info = "[";
+  $info .= "Name:$name, " if defined $name;
+  $info .= "Group:$group, " if defined $group;
+  $info .= "Host:$host:$port, ID:$cid]";
+  
+  return $info;
+};
+  
 # Receive
 websocket '/' => sub {
   my $self = shift;
@@ -56,20 +72,8 @@ websocket '/' => sub {
   my $client_port = $self->tx->remote_port;
   $clients->{$cid}{port} = $client_port;
   
-  my $client_info = sub {
-    
-    my $name = $clients->{$cid}{name};
-    my $group = $clients->{$cid}{group};
-    my $info = "[";
-    $info .= "Name:$name, " if defined $name;
-    $info .= "Group:$group, " if defined $group;
-    $info .= "Host:$client_host:$client_port, ID:$cid]";
-    
-    return $info;
-  };
-  
   # Connected message
-  $log->info("Success Websocket Handshake. " . $client_info->());
+  $log->info("Success Websocket Handshake. " . $client_info->($cid));
   
   # Receive client result
   $self->on(json => sub {
@@ -83,15 +87,18 @@ websocket '/' => sub {
       $clients->{$cid}{group} = $result->{group};
       $clients->{$cid}{description} = $result->{description};
       
-      $log->info("Client Connect. " . $client_info->());
+      $log->info("Client Connect. " . $client_info->($cid));
+    }
+    elsif ($type eq 'sync_result') {
+      warn 'sync result';
     }
     else {
       if (my $message = $result->{message}) {
         if ($result->{error}) {
-          $log->error($client_info->() . " send error message");
+          $log->error($client_info->($cid) . " send error message");
         }
         else {
-          $log->info($client_info->() . " send success message");
+          $log->info($client_info->($cid) . " send success message");
         }
       }
     }
@@ -100,7 +107,7 @@ websocket '/' => sub {
   # Client disconnected
   $self->on('finish' => sub {
     # Remove client
-    my $info = $client_info->();
+    my $info = $client_info->($cid);
     delete $clients->{$cid};
     $log->info("Client Disconnect. " . $info);
   });
@@ -115,18 +122,6 @@ post '/task' => sub {
   $clients->{$cid}{controller}->send(json => {
     type => 'task',
     command => $command
-  });
-};
-
-post '/sync' => sub {
-  my $self = shift;
-  
-  my $cid = $self->param('id');
-  my $task = $self->param('task');
-  
-  $clients->{$cid}{controller}->send(json => {
-    type => 'sync',
-    task => $task
   });
 };
 
@@ -148,6 +143,42 @@ get '/api/tasks.json' => sub {
   my $tasks = $server->tasks($role);
   
   $self->render(json => {tasks => $tasks});
+};
+
+post '/api/sync' => sub {
+  my $self = shift;
+  
+  my $cid = $self->param('cid');
+  my $role = $self->param('role');
+  
+  if ($clients->{$cid}{lock}) {
+    $self->render(json => {ok => 0, error => 'locked'});
+  }
+  else {
+    $clients->{$cid}{lock} = 1;
+    delete $clients->{$cid}{sync_result};
+    
+    my $role_tar = $server->role_tar($role);
+    $clients->{$cid}{controller}->send({json => {type => 'sync', role_name => $role, role_tar => $role_tar}} => sub {
+       $log->info('Sync ' . $client_info->($cid));
+       my $id;
+       $id = Mojo::IOLoop->recurring(1 => sub {
+         my $sync_result = $clients->{$cid}{sync_result};
+         if ($sync_result) {
+           Mojo::IOLoop->remove($id);
+           $clients->{$cid}{lock} = 0;
+           if ($sync_result->{ok}) {
+             return $self->render(json => {ok => 1});
+           }
+           else {
+             return $self->render(json => {ok => 0, error => 'command-failed'});
+           }
+         }
+       });
+    });
+    
+    $self->render_later;
+  }
 };
 
 $ENV{MOJO_INACTIVITY_TIMEOUT} = 0;

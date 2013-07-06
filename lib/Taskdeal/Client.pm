@@ -2,6 +2,7 @@ package Taskdeal::Client;
 use Mojo::Base -base;
 
 use Carp 'croak';
+use File::Path 'rmtree';
 
 has 'home';
 has 'log';
@@ -26,6 +27,20 @@ sub current_role {
     if @roles > 1;
   
   return $roles[0];
+}
+
+sub cleanup_role {
+  my $self = shift;
+  
+  my $home = $self->home;
+  my $role_dir = "$home/role_client";
+  
+  croak unless -d $role_dir;
+  
+  for my $role (glob "$role_dir/*") {
+    next if $role =~ /.gitdironly$/;
+    rmtree $role;
+  }
 }
 
 1;

@@ -14,15 +14,19 @@ use Taskdeal::Client;
 use Mojo::UserAgent;
 use Mojo::IOLoop;
 use Sys::Hostname 'hostname';
+use Archive::Tar;
+use File::Path qw/mkpath rmtree/;
 
 # Reconnet interval
 my $reconnect_interval = 5;
 
+my $home = "$FindBin::Bin/..";
+
 # Log
-my $log = Taskdeal::Log->new(path => "$FindBin::Bin/../log/taskdeal-client.log");
+my $log = Taskdeal::Log->new(path => "$home/log/taskdeal-client.log");
 
 # Util
-my $client = Taskdeal::Client->new(home => "$FindBin::Bin/..");
+my $client = Taskdeal::Client->new(home => $home);
 $client->log($log);
 
 # Config
@@ -84,7 +88,42 @@ $websocket_cb = sub {
         my ($tx, $hash) = @_;
         
         my $type = $hash->{type} || '';
-        if ($type eq 'sync' || $type eq 'task') {
+        if ($type eq 'sync') {
+          my $role_name = $hash->{role_name};
+          my $role_tar = $hash->{role_tar};
+          
+          $log->info('Receive sync command');
+          
+          if (open my $fh, '<', \$role_tar) {
+            my $tar = Archive::Tar->new;
+            my $role_dir = "$home/role_client/$role_name";
+            mkpath $role_dir;
+            $tar->setcwd($role_dir);
+            if ($tar->read($fh)) {
+              eval { $client->cleanup_role };
+              if ($@) {
+                my $message = "Error: cleanup role: $@";
+                $log->erorr($message);
+                $tx->send(json => {type => 'sync_result', ok => 0, message => $message});
+              }
+              else {
+                $tar->extract;
+                $tx->send(json => {type => 'sync_result', ok => 1});
+              }
+            }
+            else {
+              my $message = "Error: Can't read role tar: $!";
+              $log->erorr($message);
+              $tx->send(json => {type => 'sync_result', ok => 0, message => $message});
+            }
+          }
+          else {
+            my $message = "Error: Can't open role tar: $!";
+            $log->erorr($message);
+            $tx->send(json => {type => 'sync_result', ok => 0, message => $message});
+          }
+        }
+        elsif ($type eq 'task') {
           my $work_dir
             = $type eq 'sync' ? $FindBin::Bin : "$FindBin::Bin/task";
           
@@ -125,7 +164,7 @@ $websocket_cb = sub {
       
       # Finish websocket connection
       $tx->on(finish => sub {
-        $log->info("Connection is closed.");
+        $log->info("Disconnected.");
         
         # Reconnect to server
         Mojo::IOLoop->timer($reconnect_interval => sub { goto $websocket_cb });

@@ -30,9 +30,26 @@
             }
           }
         });
-        
       });
-      
+
+      $("[name=sync]").on('click', function () {
+        var role = $(this).closest('tr').find('[name=role]').val();
+        var cid = $(this).closest('tr').attr('cid');
+        
+        if (!role || role === '') {
+          alert('Role is not selected');
+          return;
+        }
+        
+        $.post("<%= url_for('/api/sync') %>", {cid:cid, role:role}, function (result) {
+          if (result.success) {
+            alert('success');
+          }
+          else {
+            alert('error');
+          }
+        });
+      });
     });
   % end
 
@@ -46,8 +63,6 @@
       }
     % end
     
-    <%= select_field roles => ['aaa'], style => "width:100px;padding:0;height:22px;margin-right:5px" %><button class="btn" style="margin:0;padding:0 4px;height:20px;">Sync</button>
-    
     <table class="table">
       <tr>
         <th>ID</th>
@@ -60,7 +75,7 @@
         <th>Task</th>
       </tr>
       % for my $cid (sort keys %$clients) {
-        <tr>
+        <tr cid="<%= $cid %>">
           % my $client = $clients->{$cid};
           % my $group = $client->{group};
           % my $name = $client->{name};
@@ -79,10 +94,10 @@
           <td>
             % param(role => $current_role);
             <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
-            <button class="btn" style="margin:0;padding:0 4px;height:20px;">Sync</button>
+            <button class="btn" name="sync" style="margin:0;padding:0 4px;height:20px;">Sync</button>
           </td>
           <td>
-            <%= select_field task => [['-' => ''], 'install-httpd'], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %><button class="btn" style="margin:0;padding:0 4px;height:20px;">Execute</button>
+            <%= select_field task => [['-' => '']], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %><button class="btn" style="margin:0;padding:0 4px;height:20px;">Execute</button>
           </td>
         </tr>
       % }

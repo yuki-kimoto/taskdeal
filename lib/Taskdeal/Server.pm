@@ -1,8 +1,10 @@
 package Taskdeal::Server;
 use Mojo::Base -base;
 
+use Archive::Tar;
 use Carp 'croak';
 use File::Find 'find';
+use Cwd 'cwd';
 
 has 'home';
 
@@ -42,6 +44,28 @@ sub tasks {
   }, $dir);
   
   return \@tasks;
+}
+
+sub role_tar {
+  my ($self, $role) = @_;
+  
+  # Archive role
+  my $tar = Archive::Tar->new;
+  my $home = $self->home;
+  my $role_dir = "$home/roles/$role";
+  chdir $role_dir
+    or croak "Can't change directory $role_dir: $!";
+  find(sub {
+    my $name = $File::Find::name;
+    $name =~ s/^\Q$role_dir//;
+    return if !defined $name || $name eq '';
+    $name =~ s/^\///;
+    $tar->add_files($name);
+  }, $role_dir);
+
+  my $role_tar = $tar->write;
+  
+  return $role_tar;
 }
 
 1;
