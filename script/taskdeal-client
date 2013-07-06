@@ -104,23 +104,23 @@ $websocket_cb = sub {
               if ($@) {
                 my $message = "Error: cleanup role: $@";
                 $log->erorr($message);
-                $tx->send(json => {type => 'sync_result', ok => 0, message => $message});
+                $tx->send({json => {type => 'sync_result', ok => 0, message => $message}});
               }
               else {
                 $tar->extract;
-                $tx->send(json => {type => 'sync_result', ok => 1});
+                $tx->send({json => {type => 'sync_result', ok => 1}});
               }
             }
             else {
               my $message = "Error: Can't read role tar: $!";
               $log->erorr($message);
-              $tx->send(json => {type => 'sync_result', ok => 0, message => $message});
+              $tx->send({json => {type => 'sync_result', ok => 0, message => $message}});
             }
           }
           else {
             my $message = "Error: Can't open role tar: $!";
             $log->erorr($message);
-            $tx->send(json => {type => 'sync_result', ok => 0, message => $message});
+            $tx->send({json => {type => 'sync_result', ok => 0, message => $message}});
           }
         }
         elsif ($type eq 'task') {
@@ -136,29 +136,29 @@ $websocket_cb = sub {
               if (($status || '') =~ /^0/) {
                 my $message = "$type success. Command $command @$args";
                 $log->info($message);
-                $tx->send(json => {message => $message, success => 1});
+                $tx->send({json => {message => $message, success => 1}});
               }
               else {
                 my $message = "$type fail. Command $command @$args. Return bad status.";
                 $log->error($message);
-                $tx->send(json => {message => $message, success => 0});
+                $tx->send({json => {message => $message, success => 0}});
               }
             } else {
               my $message = "$type fail. Command $command @$args. Command fail.";
               $log->error($message);
-              $tx->send(json => {message => $message, success => 0});
+              $tx->send({json => {message => $message, success => 0}});
             }
           }
           else {
             my $message = "$type fail. Can't change directory $FindBin::Bin: $!";
             $log->error($message);
-            $tx->send(json => {message => $message, success => 0});
+            $tx->send({json => {message => $message, success => 0}});
           }
         }
         else {
           my $message = "Unknown type $type";
           $log->error($message);
-          $tx->send(json => {message => "Unknown type $type", success => 0});
+          $tx->send({json => {message => "Unknown type $type", success => 0}});
         }
       });
       
