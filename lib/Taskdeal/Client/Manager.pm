@@ -7,6 +7,22 @@ use File::Path 'rmtree';
 has 'home';
 has 'log';
 
+sub role_dir {
+  my $self = shift;
+  
+  my $home = $self->home;
+  
+  return "$home/client/role";
+}
+
+sub role_path {
+  my ($self, $role_name) = @_;
+  
+  my $role_dir = $self->role_dir;
+  
+  return "$role_dir/$role_name";
+}
+
 sub current_role {
   my $self = shift;
   
