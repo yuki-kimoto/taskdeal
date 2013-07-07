@@ -8,7 +8,7 @@ use lib "$FindBin::Bin/../mojo/lib";
 use lib "$FindBin::Bin/../extlib/lib/perl5";
 
 use Taskdeal::Log;
-use Taskdeal::Manager;
+use Taskdeal::Server::Manager;
 
 has 'manager';
 
@@ -36,7 +36,7 @@ sub startup {
   my $tasks_dir = $home->rel_dir('tasks');
 
   # Manager
-  my $manager = Taskdeal::Manager->new(home => $home->to_string);
+  my $manager = Taskdeal::Server::Manager->new(home => $home->to_string);
   $self->manager($manager);
 
   # Client information

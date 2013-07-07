@@ -10,7 +10,7 @@ use lib "$FindBin::Bin/../lib";
 
 use Config::Tiny;
 use Taskdeal::Log;
-use Taskdeal::Manager;
+use Taskdeal::Client::Manager;
 use Mojo::UserAgent;
 use Mojo::IOLoop;
 use Sys::Hostname 'hostname';
@@ -26,7 +26,7 @@ my $home = "$FindBin::Bin/..";
 my $log = Taskdeal::Log->new(path => "$home/log/taskdeal-client.log");
 
 # Util
-my $manager = Taskdeal::Manager->new(home => $home, log => $log);
+my $manager = Taskdeal::Client::Manager->new(home => $home, log => $log);
 
 # Config
 my $ct = Config::Tiny->new;
@@ -95,7 +95,7 @@ $websocket_cb = sub {
           
           if (open my $fh, '<', \$role_tar) {
             my $tar = Archive::Tar->new;
-            my $role_dir = "$home/role_client/$role_name";
+            my $role_dir = "$home/client/role/$role_name";
             mkpath $role_dir;
             $tar->setcwd($role_dir);
             if ($tar->read($fh)) {

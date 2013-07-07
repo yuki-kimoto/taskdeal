@@ -21,8 +21,8 @@ files/*
 run.d/*
 !run.d/.gitignore
 extlib/*
-roles/*
-!roles/.gitdironly
-role_client/*
-!role_client/.gitdironly
+server/roles/*
+!server/roles/.gitdironly
+client/role/*
+!client/role/.gitdironly
 taskdeal-client.my.conf

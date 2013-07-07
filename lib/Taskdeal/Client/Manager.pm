@@ -1,4 +1,4 @@
-package Taskdeal::Client;
+package Taskdeal::Client::Manager;
 use Mojo::Base -base;
 
 use Carp 'croak';
@@ -12,7 +12,7 @@ sub current_role {
   
   # Search role
   my $home = $self->home;
-  my $dir = "$home/role_client";
+  my $dir = "$home/client/role";
   opendir my $dh, $dir
     or croak "Can't open directory $dir: $!";
   my @roles;
@@ -23,7 +23,7 @@ sub current_role {
   
   # Check role counts
   my $count = @roles;
-  $self->log->warn("role_client directory should contain only one role. Found $count role: @roles")
+  $self->log->warn("client/role directory should contain only one role. Found $count role: @roles")
     if @roles > 1;
   
   return $roles[0];
@@ -33,7 +33,7 @@ sub cleanup_role {
   my $self = shift;
   
   my $home = $self->home;
-  my $role_dir = "$home/role_client";
+  my $role_dir = "$home/client/role";
   
   croak unless -d $role_dir;
   
