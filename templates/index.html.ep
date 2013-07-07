@@ -1,5 +1,5 @@
 <%
-  my $roles = app->server->roles;
+  my $roles = app->manager->roles;
 %>
 
 % layout 'common';

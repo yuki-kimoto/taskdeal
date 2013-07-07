@@ -10,9 +10,9 @@ use lib "$FindBin::Bin/../lib";
 BEGIN { $ENV{MOJO_HOME} = "$FindBin::Bin/.." }
 use Mojolicious::Lite;
 use Taskdeal::Log;
-use Taskdeal::Server;
+use Taskdeal::Manager;
 
-app->attr('server');
+app->attr('manager');
 
 # Home
 my $home = "$FindBin::Bin/..";
@@ -30,9 +30,9 @@ $hypnotoad->{workers} = 1;
 # Tasks directory
 my $tasks_dir = app->home->rel_dir('tasks');
 
-# Server
-my $server = Taskdeal::Server->new(home => $home);
-app->server($server);
+# Manager
+my $manager = Taskdeal::Manager->new(home => $home);
+app->manager($manager);
 
 # Clients
 my $clients = {};
@@ -140,7 +140,7 @@ get '/api/tasks.json' => sub {
   
   my $role = $self->param('role');
   
-  my $tasks = $server->tasks($role);
+  my $tasks = $manager->tasks($role);
   
   $self->render(json => {tasks => $tasks});
 };
@@ -158,7 +158,7 @@ post '/api/sync' => sub {
     $clients->{$cid}{lock} = 1;
     delete $clients->{$cid}{sync_result};
     
-    my $role_tar = $server->role_tar($role);
+    my $role_tar = $manager->role_tar($role);
     $clients->{$cid}{controller}->send({json => {type => 'sync', role_name => $role, role_tar => $role_tar}} => sub {
        $log->info('Sync ' . $client_info->($cid));
        my $id;

@@ -1,71 +1,191 @@
 package Taskdeal::Server;
 use Mojo::Base -base;
 
-use Archive::Tar;
-use Carp 'croak';
-use File::Find 'find';
-use Cwd 'cwd';
+#!/usr/bin/env perl
 
-has 'home';
+use strict;
+use warnings;
 
-sub roles {
+use FindBin;
+use lib "$FindBin::Bin/../extlib/lib/perl5";
+use lib "$FindBin::Bin/../mojo/lib";
+use lib "$FindBin::Bin/../lib";
+BEGIN { $ENV{MOJO_HOME} = "$FindBin::Bin/.." }
+use Mojolicious::Lite;
+use Taskdeal::Log;
+use Taskdeal::Manager;
+
+app->attr('manager');
+
+# Home
+my $home = "$FindBin::Bin/..";
+
+# Log
+my $log = Taskdeal::Log->new(path => "$home/log/taskdeal-server.log");
+
+# Config
+my $config = plugin('INIConfig', ext => 'conf');
+
+# Workers is always 1
+my $hypnotoad = $config->{hypnotoad};
+$hypnotoad->{workers} = 1;
+
+# Tasks directory
+my $tasks_dir = app->home->rel_dir('tasks');
+
+# Manager
+my $manager = Taskdeal::Manager->new(home => $home);
+app->manager($manager);
+
+# Clients
+my $clients = {};
+
+my $client_info = sub {
+  my $cid = shift;
+  
+  my $name = $clients->{$cid}{name};
+  my $group = $clients->{$cid}{group};
+  my $host = $clients->{$cid}{host};
+  my $port = $clients->{$cid}{port};
+  
+  my $info = "[";
+  $info .= "Name:$name, " if defined $name;
+  $info .= "Group:$group, " if defined $group;
+  $info .= "Host:$host:$port, ID:$cid]";
+  
+  return $info;
+};
+  
+# Receive
+websocket '/' => sub {
   my $self = shift;
   
-  # Search roles
-  my $home = $self->home;
-  my $dir = "$home/roles";
-  opendir my $dh, $dir
-    or croak "Can't open directory $dir: $!";
-  my @roles;
-  while (my $role = readdir $dh) {
-    next if $role =~ /^\./ || ! -d "$dir/$role";
-    push @roles, $role;
+  # Client id
+  my $object_id = "$self";
+  my ($cid) = $object_id =~ /\(0x(.+?)\)$/;
+  
+  # Resist controller
+  $clients->{$cid}{controller} = $self;
+  
+  # Client host
+  my $client_host = $self->tx->remote_address;
+  $clients->{$cid}{host} = $client_host;
+  
+  # Remote port
+  my $client_port = $self->tx->remote_port;
+  $clients->{$cid}{port} = $client_port;
+  
+  # Connected message
+  $log->info("Success Websocket Handshake. " . $client_info->($cid));
+  
+  # Receive client result
+  $self->on(json => sub {
+    my ($tx, $result) = @_;
+    
+    my $type = $result->{type} || '';
+    
+    if ($type eq 'client_info') {
+      $clients->{$cid}{current_task} = $result->{current_task};
+      $clients->{$cid}{name} = $result->{name};
+      $clients->{$cid}{group} = $result->{group};
+      $clients->{$cid}{description} = $result->{description};
+      
+      $log->info("Client Connect. " . $client_info->($cid));
+    }
+    elsif ($type eq 'sync_result') {
+      warn 'sync result';
+    }
+    else {
+      if (my $message = $result->{message}) {
+        if ($result->{error}) {
+          $log->error($client_info->($cid) . " send error message");
+        }
+        else {
+          $log->info($client_info->($cid) . " send success message");
+        }
+      }
+    }
+  });
+  
+  # Client disconnected
+  $self->on('finish' => sub {
+    # Remove client
+    my $info = $client_info->($cid);
+    delete $clients->{$cid};
+    $log->info("Client Disconnect. " . $info);
+  });
+};
+
+post '/task' => sub {
+  my $self = shift;
+  
+  my $cid = $self->param('id');
+  my $command = $self->param('command');
+  
+  $clients->{$cid}{controller}->send(json => {
+    type => 'task',
+    command => $command
+  });
+};
+
+get '/' => sub {
+  my $self = shift;
+  
+  # Render
+  $self->render(
+    '/index',
+    clients => $clients,
+  );
+};
+
+get '/api/tasks.json' => sub {
+  my $self = shift;
+  
+  my $role = $self->param('role');
+  
+  my $tasks = $manager->tasks($role);
+  
+  $self->render(json => {tasks => $tasks});
+};
+
+post '/api/sync' => sub {
+  my $self = shift;
+  
+  my $cid = $self->param('cid');
+  my $role = $self->param('role');
+  
+  if ($clients->{$cid}{lock}) {
+    $self->render(json => {ok => 0, error => 'locked'});
   }
-  
-  # Check role counts
-  
-  return \@roles;
-}
+  else {
+    $clients->{$cid}{lock} = 1;
+    delete $clients->{$cid}{sync_result};
+    
+    my $role_tar = $manager->role_tar($role);
+    $clients->{$cid}{controller}->send({json => {type => 'sync', role_name => $role, role_tar => $role_tar}} => sub {
+       $log->info('Sync ' . $client_info->($cid));
+       my $id;
+       $id = Mojo::IOLoop->recurring(1 => sub {
+         my $sync_result = $clients->{$cid}{sync_result};
+         if ($sync_result) {
+           Mojo::IOLoop->remove($id);
+           $clients->{$cid}{lock} = 0;
+           if ($sync_result->{ok}) {
+             return $self->render(json => {ok => 1});
+           }
+           else {
+             return $self->render(json => {ok => 0, error => 'command-failed'});
+           }
+         }
+       });
+    });
+    
+    $self->render_later;
+  }
+};
 
-sub tasks {
-  my ($self, $role) = @_;
-  
-  return unless defined $role;
-  
-  # Search tasks
-  my $home = $self->home;
-  my $dir = "$home/roles/$role";
-  my @tasks;
-  find(sub {
-    my $task = $File::Find::name;
-    $task =~ s/^\Q$dir//;
-    $task =~ s/^\///;
-    push @tasks, $task if defined $task && length $task;
-  }, $dir);
-  
-  return \@tasks;
-}
+$ENV{MOJO_INACTIVITY_TIMEOUT} = 0;
 
-sub role_tar {
-  my ($self, $role) = @_;
-  
-  # Archive role
-  my $tar = Archive::Tar->new;
-  my $home = $self->home;
-  my $role_dir = "$home/roles/$role";
-  chdir $role_dir
-    or croak "Can't change directory $role_dir: $!";
-  find(sub {
-    my $name = $File::Find::name;
-    $name =~ s/^\Q$role_dir//;
-    return if !defined $name || $name eq '';
-    $name =~ s/^\///;
-    $tar->add_files($name);
-  }, $role_dir);
-
-  my $role_tar = $tar->write;
-  
-  return $role_tar;
-}
+app->start;
 
 1;
