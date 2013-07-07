@@ -10,7 +10,7 @@ use lib "$FindBin::Bin/../lib";
 
 use Config::Tiny;
 use Taskdeal::Log;
-use Taskdeal::Client;
+use Taskdeal::Manager;
 use Mojo::UserAgent;
 use Mojo::IOLoop;
 use Sys::Hostname 'hostname';
@@ -26,8 +26,7 @@ my $home = "$FindBin::Bin/..";
 my $log = Taskdeal::Log->new(path => "$home/log/taskdeal-client.log");
 
 # Util
-my $client = Taskdeal::Client->new(home => $home);
-$client->log($log);
+my $manager = Taskdeal::Manager->new(home => $home, log => $log);
 
 # Config
 my $ct = Config::Tiny->new;
@@ -71,7 +70,7 @@ $websocket_cb = sub {
       
       # Send client information
       my $hostname = hostname;
-      my $current_role = $client->current_role;
+      my $current_role = $manager->current_role;
       my $name = $config->{client}{name};
       my $group = $config->{client}{group};
       my $description = $config->{client}{description};
@@ -100,7 +99,7 @@ $websocket_cb = sub {
             mkpath $role_dir;
             $tar->setcwd($role_dir);
             if ($tar->read($fh)) {
-              eval { $client->cleanup_role };
+              eval { $manager->cleanup_role };
               if ($@) {
                 my $message = "Error: cleanup role: $@";
                 $log->erorr($message);
