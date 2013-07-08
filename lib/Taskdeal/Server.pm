@@ -14,6 +14,8 @@ has 'manager';
 
 # Clients
 my $clients = {};
+my $controllers = {};
+my $message_id = 1;
 
 sub startup {
   my $self = shift;
@@ -96,7 +98,17 @@ sub startup {
         $log->info("Client Connect. " . $client_info->($cid));
       }
       elsif ($type eq 'sync_result') {
-        warn 'sync result';
+        $log->info('Recieve sync result' . $client_info->($cid));
+        
+        my $message_id = $result->{message_id};
+        my $controller = delete $controllers->{$message_id};
+        
+        if ($result->{ok}) {
+          return $controller->render(json => {ok => 1});
+        }
+        else {
+          return $controller->render(json => {ok => 0, error => 'command-failed'});
+        }
       }
       else {
         if (my $message = $result->{message}) {
@@ -154,37 +166,23 @@ sub startup {
   $r->post('/api/sync' => sub {
     my $self = shift;
     
+    # Controllers
+    $controllers->{$message_id} = $self;
+    
     my $cid = $self->param('cid');
     my $role = $self->param('role');
-    
-    if ($clients->{$cid}{lock}) {
-      $self->render(json => {ok => 0, error => 'locked'});
-    }
-    else {
-      $clients->{$cid}{lock} = 1;
-      delete $clients->{$cid}{sync_result};
-      
-      my $role_tar = $manager->role_tar($role);
-      $clients->{$cid}{controller}->send({json => {type => 'sync', role_name => $role, role_tar => $role_tar}} => sub {
-         $log->info('Sync ' . $client_info->($cid));
-         my $id;
-         $id = Mojo::IOLoop->recurring(1 => sub {
-           my $sync_result = $clients->{$cid}{sync_result};
-           if ($sync_result) {
-             Mojo::IOLoop->remove($id);
-             $clients->{$cid}{lock} = 0;
-             if ($sync_result->{ok}) {
-               return $self->render(json => {ok => 1});
-             }
-             else {
-               return $self->render(json => {ok => 0, error => 'command-failed'});
-             }
-           }
-         });
-      });
-      
-      $self->render_later;
-    }
+    my $role_tar = $manager->role_tar($role);
+    $clients->{$cid}{controller}->send({
+      json => {
+        type => 'sync',
+        role_name => $role,
+        role_tar => $role_tar,
+        message_id => $message_id
+      }
+    });
+    $message_id++;
+    $log->info('Send sync command' . $client_info->($cid));
+    $self->render_later;
   });
 
   $ENV{MOJO_INACTIVITY_TIMEOUT} = 0;

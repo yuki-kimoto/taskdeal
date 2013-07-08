@@ -42,7 +42,7 @@
         }
         
         $.post("<%= url_for('/api/sync') %>", {cid:cid, role:role}, function (result) {
-          if (result.success) {
+          if (result.ok) {
             alert('success');
           }
           else {

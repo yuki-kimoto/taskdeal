@@ -90,9 +90,13 @@ sub start {
           if ($type eq 'sync') {
             my $role_name = $hash->{role_name};
             my $role_tar = $hash->{role_tar};
-            
-            $log->info('Receive sync command');
-            
+
+            $log->info("Receive sync command. Role is $role_name");
+
+            my $result = {
+              type => 'sync_result',
+              message_id => $hash->{message_id}
+            };
             if (open my $fh, '<', \$role_tar) {
               my $tar = Archive::Tar->new;
               my $role_dir = "$home/client/role/$role_name";
@@ -103,23 +107,30 @@ sub start {
                 if ($@) {
                   my $message = "Error: cleanup role: $@";
                   $log->erorr($message);
-                  $tx->send({json => {type => 'sync_result', ok => 0, message => $message}});
+                  $result->{ok} = 0;
+                  $result->{message} = $message;
+                  $tx->send({json => $result});
                 }
                 else {
                   $tar->extract;
-                  $tx->send({json => {type => 'sync_result', ok => 1}});
+                  $result->{ok} = 1;
+                  $tx->send({json => $result});
                 }
               }
               else {
                 my $message = "Error: Can't read role tar: $!";
                 $log->erorr($message);
-                $tx->send({json => {type => 'sync_result', ok => 0, message => $message}});
+                $result->{ok} = 0;
+                $result->{message} = $message;
+                $tx->send({json => $result});
               }
             }
             else {
               my $message = "Error: Can't open role tar: $!";
               $log->erorr($message);
-              $tx->send({json => {type => 'sync_result', ok => 0, message => $message}});
+              $result->{ok} = 0;
+              $result->{message} = $message;
+              $tx->send({json => $result});
             }
           }
           elsif ($type eq 'task') {
