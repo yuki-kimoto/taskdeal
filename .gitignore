@@ -26,3 +26,4 @@ server/roles/*
 client/role/*
 !client/role/.gitdironly
 taskdeal-client.my.conf
+tmp/*

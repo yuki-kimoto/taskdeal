@@ -102,12 +102,27 @@ sub startup {
         
         my $message_id = $result->{message_id};
         my $controller = delete $controllers->{$message_id};
+        my $message = $result->{message};
         
         if ($result->{ok}) {
           return $controller->render(json => {ok => 1});
         }
         else {
-          return $controller->render(json => {ok => 0, error => 'command-failed'});
+          return $controller->render(json => {ok => 0, message => $message});
+        }
+      }
+      elsif ($type eq 'task_result') {
+        $log->info('Recieve task result' . $client_info->($cid));
+        
+        my $message_id = $result->{message_id};
+        my $controller = delete $controllers->{$message_id};
+        my $message = $result->{message};
+        
+        if ($result->{ok}) {
+          return $controller->render(json => {ok => 1});
+        }
+        else {
+          return $controller->render(json => {ok => 0, message => $message});
         }
       }
       else {
@@ -163,25 +178,55 @@ sub startup {
     $self->render(json => {tasks => $tasks});
   });
 
-  $r->post('/api/sync' => sub {
+  $r->post('/api/role/sync' => sub {
     my $self = shift;
     
     # Controllers
-    $controllers->{$message_id} = $self;
+    my $mid = $message_id++;
+    $controllers->{$mid} = $self;
     
+    # Sync role
     my $cid = $self->param('cid');
     my $role = $self->param('role');
     my $role_tar = $manager->role_tar($role);
+    my $c = $clients->{$cid}{controller};
+    if ($c) {
+      $c->send({
+        json => {
+          type => 'sync',
+          role_name => $role,
+          role_tar => $role_tar,
+          message_id => $mid
+        }
+      });
+      $log->info('Send sync command' . $client_info->($cid));
+      $self->render_later;
+    }
+    else {
+      $self->render(json => {ok => 0, message => 'Client[ID:262f1b8] not found'});
+    }
+  });
+  
+  $r->post('/api/task/execute' => sub {
+    my $self = shift;
+    
+    # Controllers
+    my $mid = $message_id++;
+    $controllers->{$mid} = $self;
+    
+    # Send task command
+    my $cid = $self->param('cid');
+    my $role = $self->param('role');
+    my $task = $self->param('task');
     $clients->{$cid}{controller}->send({
       json => {
-        type => 'sync',
-        role_name => $role,
-        role_tar => $role_tar,
-        message_id => $message_id
+        type => 'task',
+        role => $role,
+        task => $task,
+        message_id => $mid
       }
     });
-    $message_id++;
-    $log->info('Send sync command' . $client_info->($cid));
+    $log->info('Send task command' . $client_info->($cid));
     $self->render_later;
   });
 

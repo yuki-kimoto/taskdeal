@@ -21,6 +21,7 @@ sub start {
   
   # Home
   my $home = $self->home;
+  $ENV{TASKDEAL_HOME} = $home;
   
   # Log
   my $log = Taskdeal::Log->new(path => "$home/log/taskdeal-client.log");
@@ -87,6 +88,7 @@ sub start {
           my ($tx, $hash) = @_;
           
           my $type = $hash->{type} || '';
+          
           if ($type eq 'sync') {
             my $role_name = $hash->{role_name};
             my $role_tar = $hash->{role_tar};
@@ -134,40 +136,61 @@ sub start {
             }
           }
           elsif ($type eq 'task') {
-            my $work_dir = "$home/client/role";
+            my $role = $hash->{role};
+            my $work_dir = "$home/client/role/$role";
+            my $task = $hash->{task};
+            
+            $log->info("Receive task command. Role is $role. Task is $task.");
+            
+            my $result = {
+              type => 'task_result',
+              message_id => $hash->{message_id}
+            };
             
             if (chdir $work_dir) {
-              my $command = $hash->{command};
-              my $args = $hash->{args} || [];
               
-              if (system("./$command", @$args) == 0) {
+              if (system("./$task") == 0) {
                 my $status = `echo $?`;
                 if (($status || '') =~ /^0/) {
-                  my $message = "$type success. Command $command @$args";
+                  my $message = "Task $task success.";
                   $log->info($message);
-                  $tx->send({json => {message => $message, success => 1}});
+                  $result->{message} = $message;
+                  $result->{ok} = 1;
+                  $tx->send({json => $result});
                 }
                 else {
-                  my $message = "$type fail. Command $command @$args. Return bad status.";
+                  my $message = "Task $task fail. Return bad status.";
                   $log->error($message);
-                  $tx->send({json => {message => $message, success => 0}});
+                  $result->{message} = $message;
+                  $result->{ok} = 0;
+                  $tx->send({json => $result});
                 }
               } else {
-                my $message = "$type fail. Command $command @$args. Command fail.";
+                my $message = "Task $task fail. Command fail.";
                 $log->error($message);
-                $tx->send({json => {message => $message, success => 0}});
+                $result->{message} = $message;
+                $result->{ok} = 0;
+                $tx->send({json => $result});
               }
             }
             else {
-              my $message = "$type fail. Can't change directory $work_dir: $!";
+              my $message = "Task $task fail. Can't change directory $work_dir: $!";
               $log->error($message);
-              $tx->send({json => {message => $message, success => 0}});
+              $result->{message} = $message;
+              $result->{ok} = 0;
+              $tx->send({json => $result});
             }
           }
           else {
             my $message = "Unknown type $type";
+            my $result = {
+              type => 'unknown_result',
+              message_id => $hash->{message_id},
+              message => $message,
+              ok => 0
+            };
             $log->error($message);
-            $tx->send({json => {message => "Unknown type $type", success => 0}});
+            $tx->send({json => $result});
           }
         });
         

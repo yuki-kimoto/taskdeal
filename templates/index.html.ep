@@ -41,15 +41,41 @@
           return;
         }
         
-        $.post("<%= url_for('/api/sync') %>", {cid:cid, role:role}, function (result) {
+        $.post("<%= url_for('/api/role/sync') %>", {cid:cid, role:role}, function (result) {
           if (result.ok) {
-            alert('success');
+            alert('Sync command success.');
           }
           else {
-            alert('error');
+            alert('Error:' + result.message);
           }
         });
       });
+
+      $("[name=execute]").on('click', function () {
+        var role = $(this).closest('tr').find('[name=role]').val();
+        var task = $(this).closest('tr').find('[name=task]').val();
+        var cid = $(this).closest('tr').attr('cid');
+        
+        if (!role || role === '') {
+          alert('Role is not selected');
+          return;
+        }
+        
+        if (!task || task === '') {
+          alert('Task is not selected');
+          return;
+        }
+        
+        $.post("<%= url_for('/api/task/execute') %>", {cid:cid, role:role, task:task}, function (result) {
+          if (result.ok) {
+            alert('Task command success.');
+          }
+          else {
+            alert('Error:' + result.message);
+          }
+        });
+      });
+
     });
   % end
 
@@ -97,7 +123,8 @@
             <button class="btn" name="sync" style="margin:0;padding:0 4px;height:20px;">Sync</button>
           </td>
           <td>
-            <%= select_field task => [['-' => '']], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %><button class="btn" style="margin:0;padding:0 4px;height:20px;">Execute</button>
+            <%= select_field task => [['-' => '']], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
+            <button class="btn" name="execute" style="margin:0;padding:0 4px;height:20px;">Execute</button>
           </td>
         </tr>
       % }
