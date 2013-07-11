@@ -83,28 +83,31 @@ sub startup {
     # Connected message
     $log->info("Success Websocket Handshake. " . $client_info->($cid));
     
-    # Receive client result
+    # Receive client params
     $self->on(json => sub {
-      my ($tx, $result) = @_;
+      my ($tx, $params) = @_;
       
-      my $type = $result->{type} || '';
+      my $type = $params->{type} || '';
       
       if ($type eq 'client_info') {
-        $clients->{$cid}{current_task} = $result->{current_task};
-        $clients->{$cid}{name} = $result->{name};
-        $clients->{$cid}{group} = $result->{group};
-        $clients->{$cid}{description} = $result->{description};
+        $clients->{$cid}{current_role} = $params->{current_role};
+        $clients->{$cid}{name} = $params->{name};
+        $clients->{$cid}{group} = $params->{group};
+        $clients->{$cid}{description} = $params->{description};
         
         $log->info("Client Connect. " . $client_info->($cid));
       }
       elsif ($type eq 'sync_result') {
         $log->info('Recieve sync result' . $client_info->($cid));
         
-        my $message_id = $result->{message_id};
+        my $message_id = $params->{message_id};
         my $controller = delete $controllers->{$message_id};
-        my $message = $result->{message};
+        my $message = $params->{message};
         
-        if ($result->{ok}) {
+        if ($params->{ok}) {
+          use Data::Dumper;
+          warn Dumper $params;
+          $clients->{$cid}{current_role} = $params->{current_role};
           return $controller->render(json => {ok => 1});
         }
         else {
@@ -114,11 +117,11 @@ sub startup {
       elsif ($type eq 'task_result') {
         $log->info('Recieve task result' . $client_info->($cid));
         
-        my $message_id = $result->{message_id};
+        my $message_id = $params->{message_id};
         my $controller = delete $controllers->{$message_id};
-        my $message = $result->{message};
+        my $message = $params->{message};
         
-        if ($result->{ok}) {
+        if ($params->{ok}) {
           return $controller->render(json => {ok => 1});
         }
         else {
@@ -126,8 +129,8 @@ sub startup {
         }
       }
       else {
-        if (my $message = $result->{message}) {
-          if ($result->{error}) {
+        if (my $message = $params->{message}) {
+          if ($params->{error}) {
             $log->error($client_info->($cid) . " send error message");
           }
           else {
@@ -188,7 +191,7 @@ sub startup {
     # Sync role
     my $cid = $self->param('cid');
     my $role = $self->param('role');
-    my $role_tar = $manager->role_tar($role);
+    my $role_tar = defined $role && length $role ? $manager->role_tar($role) : undef;
     my $c = $clients->{$cid}{controller};
     if ($c) {
       $c->send({

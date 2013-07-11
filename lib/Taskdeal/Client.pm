@@ -99,40 +99,59 @@ sub start {
               type => 'sync_result',
               message_id => $hash->{message_id}
             };
-            if (open my $fh, '<', \$role_tar) {
-              my $tar = Archive::Tar->new;
-              my $role_dir = "$home/client/role/$role_name";
-              mkpath $role_dir;
-              $tar->setcwd($role_dir);
-              if ($tar->read($fh)) {
-                eval { $manager->cleanup_role };
-                if ($@) {
-                  my $message = "Error: cleanup role: $@";
-                  $log->erorr($message);
+            if (defined $role_name && length $role_name) {
+              if (open my $fh, '<', \$role_tar) {
+                my $role_path = "$home/client/role/$role_name";
+                mkpath $role_path;
+                
+                my $tar = Archive::Tar->new;
+                $tar->setcwd($role_path);
+                if ($tar->read($fh)) {
+                  eval { $manager->cleanup_role };
+                  if ($@) {
+                    my $message = "Error: cleanup role: $@";
+                    $log->error($message);
+                    $result->{ok} = 0;
+                    $result->{message} = $message;
+                    $tx->send({json => $result});
+                  }
+                  else {
+                    $tar->extract;
+                    $result->{ok} = 1;
+                    $result->{current_role} = $role_name;
+                    $tx->send({json => $result});
+                  }
+                }
+                else {
+                  my $message = "Error: Can't read role tar: $!";
+                  $log->error($message);
                   $result->{ok} = 0;
                   $result->{message} = $message;
                   $tx->send({json => $result});
                 }
-                else {
-                  $tar->extract;
-                  $result->{ok} = 1;
-                  $tx->send({json => $result});
-                }
               }
               else {
-                my $message = "Error: Can't read role tar: $!";
-                $log->erorr($message);
+                my $message = "Error: Can't open role tar: $!";
+                $log->error($message);
                 $result->{ok} = 0;
                 $result->{message} = $message;
                 $tx->send({json => $result});
               }
             }
             else {
-              my $message = "Error: Can't open role tar: $!";
-              $log->erorr($message);
-              $result->{ok} = 0;
-              $result->{message} = $message;
-              $tx->send({json => $result});
+              eval { $manager->cleanup_role };
+              if ($@) {
+                my $message = "Error: cleanup role: $@";
+                $log->error($message);
+                $result->{ok} = 0;
+                $result->{message} = $message;
+                $tx->send({json => $result});
+              }
+              else {
+                $result->{ok} = 1;
+                $result->{current_role} = undef;
+                $tx->send({json => $result});
+              }
             }
           }
           elsif ($type eq 'task') {

@@ -45,43 +45,45 @@
     $(document).ready(function () {
       
       $("[name=role]").on('change', function () {
+        var that = this;
         var role = $(this).val();
-        
-        if (role === '') {
-          return;
-        }
-        
-        var task_select = $(this).closest('tr').find('[name=task]');
-        task_select.empty();
-        task_select.append('<option value="">-</option>');
-        
-        $.get("<%= url_for('/api/tasks.json') %>", {role:role}, function (result) {
-          var tasks = result.tasks;
-          
-          if (tasks) {
-            for (var i = 0; i < tasks.length; i++) {
-              var task = tasks[i];
-              task_select.append('<option value="' + task + '">' + task + '</option>');
-            }
-          }
-        });
-      });
 
-      $("[name=sync]").on('click', function () {
-        var role = $(this).closest('tr').find('[name=role]').val();
+        var role = $(this).val();
         var cid = $(this).closest('tr').attr('cid');
-        
-        if (!role || role === '') {
-          alert('Role is not selected');
-          return;
-        }
         
         $.post("<%= url_for('/api/role/sync') %>", {cid:cid, role:role}, function (result) {
           if (result.ok) {
-            alert('Sync command success.');
+            if (role == null || role === '') {
+              alert('Role is removed');
+            }
+            else {
+              alert('Role is changed to ' + role + '.');
+            }
+            
+            var task_select = $(that).closest('tr').find('[name=task]');
+            task_select.empty();
+            task_select.append('<option value="">-</option>');
+            
+            if (role == null || role === '') {
+              return;
+            }
+            
+            $.get("<%= url_for('/api/tasks.json') %>", {role:role}, function (result) {
+              var tasks = result.tasks;
+              
+              if (tasks) {
+                for (var i = 0; i < tasks.length; i++) {
+                  var task = tasks[i];
+                  task_select.append('<option value="' + task + '">' + task + '</option>');
+                }
+              }
+            });
           }
           else {
             alert('Error:' + result.message);
+            var task_select = $(that).closest('tr').find('[name=task]');
+            task_select.empty();
+            task_select.append('<option value="">-</option>');
           }
         });
       });
@@ -199,7 +201,6 @@
             <td>
               % param(role => $current_role);
               <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
-              <button class="btn" name="sync" style="margin:0;padding:0 4px;height:20px;">Sync</button>
             </td>
             <td>
               <%= select_field task => [['-' => '']], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
