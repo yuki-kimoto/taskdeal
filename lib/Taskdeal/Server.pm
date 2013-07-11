@@ -164,7 +164,7 @@ sub startup {
     # Render
     $self->render(
       '/index',
-      clients => $clients,
+      clients_h => $clients,
     );
   });
 
