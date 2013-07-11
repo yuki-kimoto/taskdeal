@@ -1,5 +1,6 @@
 <%
   my $roles = app->manager->roles;
+  my $mode = param('mode') || '';
 %>
 
 % layout 'common';
@@ -80,14 +81,53 @@
   % end
 
   <div class="container">
-    <h3>Clients</h3>
-
+      <h3
+        style="display:inline-block">Clients
+        % if ($mode eq 'group') {
+          (Group mode)
+        % }        
+      </h3>
+    <div class="well" style="background:white;padding:5px 10px">
+      <div></div>
+      <from action="<%= url_for '/' %> method="get">
+        <div>
+          ID: <%= text_field 'id', style => "margin-top:8px;width:60px;margin-right:10px;margin-bottom:0" %>
+          Group: <%= text_field 'id', style => "margin-top:8px;width:100px;margin-right:10px" %>
+          Name: <%= text_field 'id', style => "margin-top:8px;width:100px;margin-right:10px" %>
+          Description: <%= text_field 'id', style => "margin-top:8px;width:100px;margin-right:10px" %>
+        </div>
+        <div>
+          Host: <%= text_field 'id', style => "margin-top:8px;width:100px;margin-right:10px" %>
+          Port: <%= text_field 'id', style => "margin-top:8px;width:100px;margin-right:10px" %>
+        </div>
+        <div style="margin-bottom:5px">
+          Group mode:
+          % if ($mode eq 'group') {
+            <a href="<%= url_with->query([mode => undef]) %>">off</a>
+          % } else {
+            <a href="<%= url_with->query([mode => 'group']) %>">on</a>
+          % }
+        </div>
+        <%= submit_button 'Search', class => 'btn' %>
+      </form>
+    </div>
+    
     %= stylesheet begin
       .table tr td {
         vertical-align:middle;
         padding:0 5px;
       }
     % end
+    
+    % if ($mode eq 'group') {
+      Role:
+      <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
+      <button class="btn" name="sync" style="margin:0;padding:0 4px;height:20px;">Sync</button>
+      
+      Task:
+      <%= select_field task => [['-' => '']], id => "task", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
+      <button class="btn" name="execute" style="margin:0;padding:0 4px;height:20px;">Execute</button>
+    % }
     
     <table class="table">
       <tr>
@@ -97,8 +137,10 @@
         <th>Description</th>
         <th>Host</th>
         <th>Port</th>
-        <th>Role</th>
-        <th>Task</th>
+        % unless ($mode eq 'group') {
+          <th>Role</th>
+          <th>Task</th>
+        % }
       </tr>
       % for my $cid (sort keys %$clients) {
         <tr cid="<%= $cid %>">
@@ -117,15 +159,17 @@
           <td><%= $description %></td>
           <td><%= $host %></td>
           <td><%= $port %></td>
-          <td>
-            % param(role => $current_role);
-            <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
-            <button class="btn" name="sync" style="margin:0;padding:0 4px;height:20px;">Sync</button>
-          </td>
-          <td>
-            <%= select_field task => [['-' => '']], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
-            <button class="btn" name="execute" style="margin:0;padding:0 4px;height:20px;">Execute</button>
-          </td>
+          % unless ($mode eq 'group') {
+            <td>
+              % param(role => $current_role);
+              <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
+              <button class="btn" name="sync" style="margin:0;padding:0 4px;height:20px;">Sync</button>
+            </td>
+            <td>
+              <%= select_field task => [['-' => '']], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
+              <button class="btn" name="execute" style="margin:0;padding:0 4px;height:20px;">Execute</button>
+            </td>
+          % }
         </tr>
       % }
     </table>
