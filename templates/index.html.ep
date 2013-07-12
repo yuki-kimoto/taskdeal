@@ -5,7 +5,9 @@
   # Search condition
   my $conditions = [
     [id => param(['id'])],
-    [group => param(['group'])],
+    $mode eq 'group'
+      ? [group_eq => param(['group_eq'])]
+      : [group => param(['group'])],
     [name => param(['name'])],
     [description => param(['description'])],
     [host => param(['host'])],
@@ -22,14 +24,29 @@
       my $condition_val = $condition->[1];
       
       if (defined $condition_val && length $condition_val) {
-        warn $condition_key;
-        unless (defined $client->{$condition_key}
-          && $client->{$condition_key} =~ /\Q$condition_val/)
-        {
+        if ($condition_key eq 'group_eq') {
+          unless (defined $client->{group}
+            && $client->{group} eq $condition_val)
+          {
+            $skip = 1;
+            next;
+          }
+        }
+        else {
+          unless (defined $client->{$condition_key}
+            && $client->{$condition_key} =~ /\Q$condition_val/)
+          {
+            $skip = 1;
+            next;
+          }
+        }
+      }
+      else {
+        if ($condition_key eq 'group_eq') {
           $skip = 1;
           next;
         }
-      }      
+      }
     }
     next if $skip;
     
@@ -123,20 +140,26 @@
           (Group mode)
         % }        
       </h3>
-    <div class="well" style="background:white;padding:5px 10px">
+    <div class="well" style="background:white;padding:5px 15px">
       <div></div>
-      <form action="<%= url_with '/' %>" method="get">
+      <form action="<%= url_with '/' %>" method="get" style="margin-bottom:0">
         <div>
-          ID: <%= text_field 'id', style => "margin-top:8px;width:100px;margin-right:10px;margin-bottom:0" %>
-          Group: <%= text_field 'group', style => "margin-top:8px;width:110px;margin-right:10px" %>
+          ID: <%= text_field 'id', style => "margin-top:8px;width:100px;margin-right:10px;" %>
+          Group:
+          % if ($mode eq 'group') {
+            % my @groups = sort keys %$groups_h;
+            <%= select_field 'group_eq' => [['-' => ''], @groups], style => "margin-top:8px;width:120px;margin-right:10px" %>
+          % } else {
+            <%= text_field 'group', style => "margin-top:8px;width:110px;margin-right:10px" %>
+          % }
           Name: <%= text_field 'name', style => "margin-top:8px;width:110px;margin-right:10px" %>
           Description: <%= text_field 'description', style => "margin-top:8px;width:110px;margin-right:10px" %>
         </div>
-        <div>
+        <div style="margin-bottom:5px">
           Host: <%= text_field 'host', style => "margin-top:8px;width:100px;margin-right:10px" %>
           Port: <%= text_field 'port', style => "margin-top:8px;width:100px;margin-right:10px" %>
         </div>
-        <div style="margin-bottom:5px">
+        <div style="margin-bottom:13px">
           Group mode:
           % if ($mode eq 'group') {
             <a href="<%= url_with->query([mode => undef]) %>">off</a>
@@ -145,7 +168,7 @@
           % }
         </div>
         %= hidden_field mode => param(['mode']);
-        <%= submit_button 'Search', class => 'btn' %>
+        <%= submit_button 'Search', class => 'btn', style => "margin-bottom:8px" %>
       </form>
     </div>
     
@@ -157,13 +180,16 @@
     % end
     
     % if ($mode eq 'group') {
-      Role:
-      <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
-      <button class="btn" name="sync" style="margin:0;padding:0 4px;height:20px;">Sync</button>
+      % my $group_eq_str = param('group_eq');
+      % $group_eq_str = '-' if !defined $group_eq_str || !length $group_eq_str;
+      <big><b>Group:</b> <%= $group_eq_str %></big><br>
+      <b>Role:</b>
+      <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-top:8px" %>
+      <button class="btn" name="sync" style="margin:0;margin-right:10px;padding:0 4px;">Sync</button>
       
-      Task:
+      <b>Task:</b>
       <%= select_field task => [['-' => '']], id => "task", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
-      <button class="btn" name="execute" style="margin:0;padding:0 4px;height:20px;">Execute</button>
+      <button class="btn" name="execute" style="margin:0;padding:0 4px;">Execute</button>
     % }
     
     <table class="table">
@@ -175,8 +201,10 @@
         <th>Host</th>
         <th>Port</th>
         <th>Role</th>
-       % unless ($mode eq 'group') {
-         <th>Task</th>
+        % if ($mode eq 'group') {
+          <th>Status</th>
+        % } else {
+          <th>Task</th>
         % }
       </tr>
       % for my $client (@$clients) {
@@ -205,7 +233,9 @@
                 <%= $current_role %>
               % }
             </td>
-          % unless ($mode eq 'group') {
+          % if ($mode eq 'group') {
+            <td></td>
+          % } else {
             <td>
               <%= select_field task => [['-' => '']], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
               <button class="btn" name="execute" style="margin:0;padding:0 4px;height:20px;">Execute</button>

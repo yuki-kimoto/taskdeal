@@ -16,6 +16,7 @@ has 'manager';
 my $clients = {};
 my $controllers = {};
 my $message_id = 1;
+my $groups_h = {};
 
 sub startup {
   my $self = shift;
@@ -92,10 +93,14 @@ sub startup {
       if ($type eq 'client_info') {
         $clients->{$cid}{current_role} = $params->{current_role};
         $clients->{$cid}{name} = $params->{name};
-        $clients->{$cid}{group} = $params->{group};
+        my $group = $clients->{$cid}{group} = $params->{group};
         $clients->{$cid}{description} = $params->{description};
         
         $log->info("Client Connect. " . $client_info->($cid));
+        
+        if (defined $group && length $group) {
+          $groups_h->{$group}++;
+        }
       }
       elsif ($type eq 'sync_result') {
         $log->info('Recieve sync result' . $client_info->($cid));
@@ -167,6 +172,7 @@ sub startup {
     $self->render(
       '/index',
       clients_h => $clients,
+      groups_h => $groups_h
     );
   });
 
