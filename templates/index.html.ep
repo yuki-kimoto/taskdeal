@@ -174,9 +174,9 @@
         <th>Description</th>
         <th>Host</th>
         <th>Port</th>
-        % unless ($mode eq 'group') {
-          <th>Role</th>
-          <th>Task</th>
+        <th>Role</th>
+       % unless ($mode eq 'group') {
+         <th>Task</th>
         % }
       </tr>
       % for my $client (@$clients) {
@@ -197,11 +197,15 @@
           <td><%= $description %></td>
           <td><%= $host %></td>
           <td><%= $port %></td>
-          % unless ($mode eq 'group') {
             <td>
-              % param(role => $current_role);
-              <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
+              % if ($mode ne 'group') {
+                % param(role => $current_role);
+                <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
+              % } else {
+                <%= $current_role %>
+              % }
             </td>
+          % unless ($mode eq 'group') {
             <td>
               <%= select_field task => [['-' => '']], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
               <button class="btn" name="execute" style="margin:0;padding:0 4px;height:20px;">Execute</button>
