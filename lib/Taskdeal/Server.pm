@@ -106,7 +106,6 @@ sub startup {
         
         if ($params->{ok}) {
           use Data::Dumper;
-          warn Dumper $params;
           $clients->{$cid}{current_role} = $params->{current_role};
           return $controller->render(json => {ok => 1});
         }

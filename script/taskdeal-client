@@ -1,14 +1,20 @@
 #!/usr/bin/env perl
+use Mojo::Base -strict;
 
-use strict;
-use warnings;
+use File::Basename 'dirname';
+use File::Spec::Functions qw/catdir splitdir/;
 
-use FindBin;
-use lib "$FindBin::Bin/../lib";
-use lib "$FindBin::Bin/../mojo/lib";
-use lib "$FindBin::Bin/../extlib/lib/perl5";
+# Source directory has precedence
+my @base = (splitdir(dirname(__FILE__)), '..');
+my $lib = join('/', @base, 'lib');
+-e catdir(@base, 't') ? unshift(@INC, $lib) : push(@INC, $lib);
 
-use Taskdeal::Client;
+# Check if Mojolicious is installed;
+die <<EOF unless eval 'use Mojolicious::Commands; 1';
+It looks like you don't have the Mojolicious framework installed.
+Please visit http://mojolicio.us for detailed installation instructions.
 
-my $home = "$FindBin::Bin/..";
-Taskdeal::Client->new(home => $home)->start;
+EOF
+
+# Start commands
+Mojolicious::Commands->start_app('Taskdeal::Client');
