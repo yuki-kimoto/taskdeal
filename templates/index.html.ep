@@ -2,57 +2,50 @@
   my $roles = app->manager->roles;
   my $mode = param('mode') || '';
   
-  # Search condition
-  my $conditions = [
-    [id => param(['id'])],
-    $mode eq 'group'
-      ? [group_eq => param(['group_eq'])]
-      : [group => param(['group'])],
-    [name => param(['name'])],
-    [description => param(['description'])],
-    [host => param(['host'])],
-    [port => param(['port'])]
-  ];
+  my $dbi = app->dbi;
+  my $id = param('id');
+  my $name = param('name');
+  my $group = param('group');
+  my $host = param('host');
+  my $port = param('host');
   
-  my $clients = [];
-  for my $cid (keys %$clients_h) {
-    my $client = {%{$clients_h->{$cid}}, id => $cid};
-    
-    my $skip;
-    for my $condition (@$conditions) {
-      my $condition_key = $condition->[0];
-      my $condition_val = $condition->[1];
-      
-      if (defined $condition_val && length $condition_val) {
-        if ($condition_key eq 'group_eq') {
-          unless (defined $client->{group}
-            && $client->{group} eq $condition_val)
-          {
-            $skip = 1;
-            next;
-          }
-        }
-        else {
-          unless (defined $client->{$condition_key}
-            && $client->{$condition_key} =~ /\Q$condition_val/)
-          {
-            $skip = 1;
-            next;
-          }
-        }
-      }
-      else {
-        if ($condition_key eq 'group_eq') {
-          $skip = 1;
-          next;
-        }
-      }
-    }
-    next if $skip;
-    
-    push @$clients, $client;
+  # Where
+  my $group_q = $dbi->q('group');
+  my $clause = ['and',
+    ':id{like}',
+    ':name{like}',
+    $mode eq 'group' ? "$group_q = :group" : "$group_q like :group",
+    ':host{like}',
+    ':port{like}'
+  ];
+  my $p = {};
+  $p->{id} = "%$id%" if defined $id && length $id;
+  $p->{name} = "%$name%" if defined $name && length $name;
+  if ($mode eq 'group') {
+    $p->{group} = $group;
+    $p->{group} = '' unless defined $group;
   }
+  else {
+    $p->{group} = "%$group%" if defined $group && length $group;
+  }
+  $p->{host} = "%$host%" if defined $host && length $host;
+  $p->{port} = "%$port%" if defined $port && length $port;
+  my $where = $dbi->where;
+  $where->clause($clause);
+  $where->param($p);
+  
+  my $clients = $dbi->model('client')->select(
+    append => "order by $group_q, name, host, port",
+    where => $where
+  )->all;
+
+  my $groups = $dbi->model('client')->select(
+    $group_q,
+    append => "group by $group_q order by $group_q"
+  )->values;
 %>
+
+
 
 % layout 'common';
 
@@ -60,6 +53,17 @@
 
   %= javascript begin
     $(document).ready(function () {
+      
+      // Clear search form
+      $("[name=clear]").on('click', function () {
+        var form = $("form.search");
+        form.find("[name=id]").val('');
+        form.find("[name=group]").val('');
+        form.find("[name=name]").val('');
+        form.find("[name=description]").val('');
+        form.find("[name=host]").val('');
+        form.find("[name=port]").val('');
+      });
       
       $("[name=role]").on('change', function () {
         var that = this;
@@ -142,13 +146,12 @@
       </h3>
     <div class="well" style="background:white;padding:5px 15px">
       <div></div>
-      <form action="<%= url_with '/' %>" method="get" style="margin-bottom:0">
+      <form class="search" action="<%= url_with '/' %>" method="get" style="margin-bottom:0">
         <div>
           ID: <%= text_field 'id', style => "margin-top:8px;width:100px;margin-right:10px;" %>
           Group:
           % if ($mode eq 'group') {
-            % my @groups = sort keys %$groups_h;
-            <%= select_field 'group_eq' => [['-' => ''], @groups], style => "margin-top:8px;width:120px;margin-right:10px" %>
+            <%= select_field 'group' => [['-' => ''], @$groups], style => "margin-top:8px;width:120px;margin-right:10px" %>
           % } else {
             <%= text_field 'group', style => "margin-top:8px;width:110px;margin-right:10px" %>
           % }
@@ -169,6 +172,7 @@
         </div>
         %= hidden_field mode => param(['mode']);
         <%= submit_button 'Search', class => 'btn', style => "margin-bottom:8px" %>
+        <button type="button" name="clear" class = 'btn' style = "margin-bottom:8px">Clear</button>
       </form>
     </div>
     
@@ -180,9 +184,9 @@
     % end
     
     % if ($mode eq 'group') {
-      % my $group_eq_str = param('group_eq');
-      % $group_eq_str = '-' if !defined $group_eq_str || !length $group_eq_str;
-      <big><b>Group:</b> <%= $group_eq_str %></big><br>
+      % my $group_str = param('group');
+      % $group_str = '-' if !defined $group_str || !length $group_str;
+      <big><b>Group:</b> <%= $group_str %></big><br>
       <b>Role:</b>
       <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-top:8px" %>
       <button class="btn" name="sync" style="margin:0;margin-right:10px;padding:0 4px;">Sync</button>

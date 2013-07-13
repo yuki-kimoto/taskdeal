@@ -28,3 +28,5 @@ client/role/*
 taskdeal-client.my.conf
 tmp/*
 extlib/*
+data/*
+!data/.gitignore

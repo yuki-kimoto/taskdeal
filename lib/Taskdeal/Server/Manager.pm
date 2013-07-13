@@ -7,6 +7,7 @@ use File::Find 'find';
 use File::Path 'rmtree';
 
 has 'home';
+has 'app';
 
 sub roles_dir {
   my $self = shift;
@@ -82,6 +83,49 @@ sub role_tar {
   my $role_tar = $tar->write;
   
   return $role_tar;
+}
+
+sub setup_database {
+  my $self = shift;
+  
+  my $dbi = $self->app->dbi;
+  
+  # Create client table
+  eval {
+    my $sql = <<"EOS";
+create table client (
+  row_id integer primary key autoincrement,
+  id not null unique default ''
+);
+EOS
+    $dbi->execute($sql);
+  };
+
+  # Create client columns
+  my $user_columns = [
+    q/"group" not null default ''/,
+    "name not null default ''",
+    "description not null default ''",
+    "host not null default ''",
+    "port not null default ''",
+    "current_role not null default ''"
+  ];
+  for my $column (@$user_columns) {
+    eval { $dbi->execute("alter table client add column $column") };
+  }
+  
+  # Check user table
+  eval {
+    $dbi->select(
+      {client => [qw/row_id id group name description host port/]},
+      table => 'client'
+    );
+  };
+  if ($@) {
+    my $error = "Can't create client table properly: $@";
+    $self->app->log->error($error);
+    croak $error;
+  }
 }
 
 1;

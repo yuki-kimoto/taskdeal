@@ -9,8 +9,11 @@ use lib "$FindBin::Bin/../extlib/lib/perl5";
 
 use Taskdeal::Log;
 use Taskdeal::Server::Manager;
+use DBIx::Custom;
+use Scalar::Util 'weaken';
 
 has 'manager';
+has 'dbi';
 
 # Clients
 my $clients = {};
@@ -39,21 +42,42 @@ sub startup {
   my $tasks_dir = $home->rel_dir('tasks');
 
   # Manager
-  my $manager = Taskdeal::Server::Manager->new(home => $home->to_string);
+  my $manager = Taskdeal::Server::Manager->new(home => $home->to_string, app => $self);
+  weaken $manager->{app};
   $self->manager($manager);
+  
+  # DBI
+  my $db_file = $self->home->rel_file('data/taskdeal.db');
+  my $dbi = DBIx::Custom->connect(
+    dsn => "dbi:SQLite:database=$db_file",
+    connector => 1,
+    option => {sqlite_unicode => 1, sqlite_use_immediate_transaction => 1}
+  );
+  $self->dbi($dbi);
+  
+  # Setup database
+  $manager->setup_database;
 
+  # Model
+  $dbi->create_model({table => 'client', primary_key => 'id'});
+  
+  # Remove all clients
+  $dbi->model('client')->delete_all;
+  
   # Client information
   my $client_info = sub {
     my $cid = shift;
     
-    my $name = $clients->{$cid}{name};
-    my $group = $clients->{$cid}{group};
-    my $host = $clients->{$cid}{host};
-    my $port = $clients->{$cid}{port};
+    my $row = $dbi->model('client')->select(id => $cid)->one;
+    
+    my $name = $row->{name};
+    my $group = $row->{group};
+    my $host = $row->{host};
+    my $port = $row->{port};
     
     my $info = "[";
-    $info .= "Name:$name, " if defined $name;
-    $info .= "Group:$group, " if defined $group;
+    $info .= "Name:$name, " if length $name;
+    $info .= "Group:$group, " if length $group;
     $info .= "Host:$host:$port, ID:$cid]";
     
     return $info;
@@ -91,16 +115,21 @@ sub startup {
       my $type = $params->{type} || '';
       
       if ($type eq 'client_info') {
-        $clients->{$cid}{current_role} = $params->{current_role};
-        $clients->{$cid}{name} = $params->{name};
-        my $group = $clients->{$cid}{group} = $params->{group};
-        $clients->{$cid}{description} = $params->{description};
+        
+        my $p = {};
+        
+        $p->{id} = $cid;
+        $p->{name} = $params->{name};
+        $p->{name} = '' unless defined $p->{name};
+        $p->{current_role} = $params->{current_role};
+        $p->{current_role} = '' unless defined $p->{current_role};
+        $p->{group} = $params->{group};
+        $p->{group} = '' unless defined $p->{group};
+        $p->{host} = $clients->{$cid}{host};
+        $p->{port} = $clients->{$cid}{port};
+        $dbi->model('client')->insert($p);
         
         $log->info("Client Connect. " . $client_info->($cid));
-        
-        if (defined $group && length $group) {
-          $groups_h->{$group}++;
-        }
       }
       elsif ($type eq 'sync_result') {
         $log->info('Recieve sync result' . $client_info->($cid));
@@ -149,6 +178,7 @@ sub startup {
       # Remove client
       my $info = $client_info->($cid);
       delete $clients->{$cid};
+      $dbi->model('client')->delete(id => $cid);
       $log->info("Client Disconnect. " . $info);
     });
   });
@@ -169,11 +199,7 @@ sub startup {
     my $self = shift;
     
     # Render
-    $self->render(
-      '/index',
-      clients_h => $clients,
-      groups_h => $groups_h
-    );
+    $self->render('/index');
   });
 
   $r->get('/api/tasks.json' => sub {
