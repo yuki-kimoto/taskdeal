@@ -1,4 +1,6 @@
 <%
+  use Data::Page ();
+  
   my $roles = app->manager->roles;
   my $mode = param('mode') || '';
   
@@ -8,7 +10,12 @@
   my $group = param('group');
   my $host = param('host');
   my $port = param('host');
-  
+
+  # Limit
+  my $page = param('page') || 1;
+  my $count = 100;
+  my $offset = ($page - 1) * $count;
+
   # Where
   my $group_q = $dbi->q('group');
   my $clause = ['and',
@@ -36,16 +43,23 @@
   
   my $clients = $dbi->model('client')->select(
     append => "order by $group_q, name, host, port",
-    where => $where
+    where => $where,
+    append => "limit $offset, $count"
   )->all;
+
+  # Pager
+  my $total = $dbi->select(
+    'count(*)',
+    table => 'client',
+    where => $where
+  )->value;
+  my $pager = Data::Page->new($total, $count, $page);
 
   my $groups = $dbi->model('client')->select(
     $group_q,
     append => "group by $group_q order by $group_q"
   )->values;
 %>
-
-
 
 % layout 'common';
 
@@ -249,5 +263,60 @@
       % }
     </table>
   </div>
+
+  % my $first_page = $pager->first_page;
+  % my $current_page = $pager->current_page;
+  % my $last_page = $pager->last_page;
+  % if ($last_page > 1) {
+    <div>
+
+    </div>
+    <div class="pagination pagination-centered">
+      <ul>
+        <li>
+          <a style="color:#6666FF;font-size:70%" href="<%= url_with->query([page => 1]) %>">
+            Fisrt
+          </a>
+        </li>
+        % my $prev_page = $current_page - 1;
+        % $prev_page = 1 if $prev_page < 1;
+        <li>
+          <a href="<%= url_with->query([page => $current_page - 1]) %>">
+            <b>&laquo;</b>
+          </a>
+        </li>
+        % my $navi_first_page = $current_page - 5;
+        % my $navi_last_page = $current_page + 4;
+        % if ($navi_first_page < 1) {
+        %   $navi_last_page += 1 - $navi_first_page;
+        %   $navi_first_page = 1;
+        % }
+        % if ($navi_last_page > $last_page) {
+        %   $navi_last_page = $last_page;
+        %   $navi_first_page = $navi_last_page - 9;
+        %   $navi_first_page = 1 if $navi_first_page < 1;
+        % }
+        % for my $page ($navi_first_page .. $navi_last_page) {
+          <li class="<%= $page == $current_page ? 'active' : 'disable' %>">
+            <a href="<%= url_with->query([page => $page]) %>">
+              <%= $page %>
+            </a>
+          </li>
+        % }
+        % my $next_page = $current_page + 1;
+        % $next_page = $last_page if $next_page > $last_page;
+        <li>
+          <a href="<%= url_with->query([page => $next_page]) %>">
+            <b>&raquo;</b>
+          </a>
+        </li>
+        <li>
+          <a style="color:#6666FF;font-size:70%" href="<%= url_with->query([page => $last_page]) %>">
+             Last
+          </a>
+        </li>
+      </ul>
+    </div>
+  % }
 
   %= include '/include/footer';
