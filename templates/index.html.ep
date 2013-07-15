@@ -86,8 +86,6 @@
       $("[name=role]").on('change', function () {
         var that = this;
         var role = $(this).val();
-
-        var role = $(this).val();
         var cid = $(this).closest('tr').attr('cid');
         
         $.post("<%= url_for('/api/role/sync') %>", {cid:cid, role:role}, function (result) {
@@ -152,6 +150,60 @@
         });
       });
 
+      $("[name=sync_group]").on('click', function () {
+        
+        var role = $(this).closest('.group-manip').find('[name=role_group]').val();
+        
+        var task_select = $(this).closest('.group-manip').find('[name=task_group]');
+        task_select.empty();
+        task_select.append('<option value="">-</option>');
+        
+        if (role != null && role !== '') {
+          $.get("<%= url_for('/api/tasks.json') %>", {role:role}, function (result) {
+            var tasks = result.tasks;
+            
+            if (tasks) {
+              for (var i = 0; i < tasks.length; i++) {
+                var task = tasks[i];
+                task_select.append('<option value="' + task + '">' + task + '</option>');
+              }
+            }
+          });
+        }
+
+        var cids = [];
+        $('.clients').find('tr').each(function () {
+          var cid = $(this).attr('cid');
+          if (cid != null) {
+            cids.push(cid);
+          }
+        });
+        
+        for (var i = 0; i < cids.length; i++) {
+          var cid = cids[i];
+          $.post("<%= url_for('/api/role/sync') %>", {cid:cid, role:role}, function (result) {
+            var tr = $('.clients').find('tr[cid=' + cid + ']');
+            var message = tr.find('.message');
+            var role_td = tr.find('.role');
+            
+            if (result.ok) {
+              message.css("color", "green");
+              role_td.text(role);
+              if (role == null || role === '') {
+                message.text('Role is removed');
+              }
+              else {
+                message.text('Role is changed to ' + role + '.');
+              }
+            }
+            else {
+              message.css("color", "red");
+              message.text('Error:' + result.message);
+            }
+          });
+        }
+      });
+      
     });
   % end
 
@@ -202,19 +254,21 @@
     % end
     
     % if ($mode eq 'group') {
-      % my $group_str = param('group');
-      % $group_str = '-' if !defined $group_str || !length $group_str;
-      <big><b>Group:</b> <%= $group_str %></big><br>
-      <b>Role:</b>
-      <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-top:8px" %>
-      <button class="btn" name="sync" style="margin:0;margin-right:10px;padding:0 4px;">Sync</button>
-      
-      <b>Task:</b>
-      <%= select_field task => [['-' => '']], id => "task", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
-      <button class="btn" name="execute" style="margin:0;padding:0 4px;">Execute</button>
+      <div class="group-manip">
+        % my $group_str = param('group');
+        % $group_str = '-' if !defined $group_str || !length $group_str;
+        <big><b>Group:</b> <%= $group_str %></big><br>
+        <b>Role:</b>
+        <%= select_field role_group => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-top:8px" %>
+        <button class="btn" name="sync_group" style="margin:0;margin-right:10px;padding:0 4px;">Sync</button>
+        
+        <b>Task:</b>
+        <%= select_field task_group => [['-' => '']], id => "task", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
+        <button class="btn" name="execute_group" style="margin:0;padding:0 4px;">Execute</button>
+      </div>
     % }
     
-    <table class="table">
+    <table class="table clients">
       <tr>
         <th>ID</th>
         <th>Group</th>
@@ -224,7 +278,7 @@
         <th>Port</th>
         <th>Role</th>
         % if ($mode eq 'group') {
-          <th>Status</th>
+          <th style="width:200px">Message</th>
         % } else {
           <th>Task</th>
         % }
@@ -247,7 +301,7 @@
           <td><%= $description %></td>
           <td><%= $host %></td>
           <td><%= $port %></td>
-            <td>
+            <td class="role">
               % if ($mode ne 'group') {
                 % param(role => $current_role);
                 <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
@@ -256,7 +310,7 @@
               % }
             </td>
           % if ($mode eq 'group') {
-            <td></td>
+            <td class="message" style="width:200px"></td>
           % } else {
             <td>
               <%= select_field task => [['-' => '']], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
