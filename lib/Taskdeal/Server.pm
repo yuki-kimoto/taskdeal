@@ -64,37 +64,18 @@ sub startup {
   # Remove all clients
   $dbi->model('client')->delete_all;
   
-  # Client information
-  my $client_info = sub {
-    my $cid = shift;
-    
-    my $row = $dbi->model('client')->select(id => $cid)->one;
-    
-    my $name = $row->{name};
-    my $group = $row->{group};
-    my $host = $row->{host};
-    my $port = $row->{port};
-    
-    my $info = "[";
-    $info .= "Name:$name, " if length $name;
-    $info .= "Group:$group, " if length $group;
-    $info .= "Host:$host:$port, ID:$cid]";
-    
-    return $info;
-  };
-  
   # Routes
   my $r = $self->routes;
 
-  # DBViewer(only development)
-  if ($self->mode eq 'development') {
-    eval {
-      $self->plugin(
-        'DBViewer',
-        dsn => "dbi:SQLite:database=$db_file"
-      );
-    };
-  }
+    # DBViewer(only development)
+    if ($self->mode eq 'development') {
+      eval {
+        $self->plugin(
+          'DBViewer',
+          dsn => "dbi:SQLite:database=$db_file"
+        );
+      };
+    }
   
   # Receive
   $r->websocket('/' => sub {
@@ -107,16 +88,16 @@ sub startup {
     # Resist controller
     $clients->{$cid}{controller} = $self;
     
-    # Client host
-    my $client_host = $self->tx->remote_address;
-    $clients->{$cid}{host} = $client_host;
-    
-    # Remote port
-    my $client_port = $self->tx->remote_port;
-    $clients->{$cid}{port} = $client_port;
+    # Register Client information
+    my $params = {
+      id => $cid,
+      host => $self->tx->remote_address,
+      port => $self->tx->remote_port
+    };
+    $dbi->model('client')->insert($params);
     
     # Connected message
-    $log->info("Success Websocket Handshake. " . $client_info->($cid));
+    $log->info("Success Websocket Handshake. " . $manager->client_info($cid));
     
     # Receive client params
     $self->on(json => sub {
@@ -128,29 +109,25 @@ sub startup {
         
         # Create client information
         my $p = {};
-        $p->{id} = $cid;
         $p->{name} = defined $params->{name} ? $params->{name} : '';
         $p->{current_role}
           = defined $params->{current_role} ? $params->{current_role} : '';
         $p->{client_group} = defined $params->{group} ? $params->{group} : '';
         $p->{description}
           = defined $params->{description} ? $params->{description} : '';
-        $p->{host} = $clients->{$cid}{host};
-        $p->{port} = $clients->{$cid}{port};
-        $dbi->model('client')->insert($p);
+        $dbi->model('client')->update($p, id => $cid);
         
         # Log client connect
-        $log->info("Client Connect. " . $client_info->($cid));
+        $log->info("Client Connect. " . $manager->client_info($cid));
       }
       elsif ($type eq 'sync_result') {
-        $log->info('Recieve sync result' . $client_info->($cid));
+        $log->info('Recieve sync result' . $manager->client_info($cid));
         
         my $message_id = $params->{message_id};
         my $controller = delete $controllers->{$message_id};
         my $message = $params->{message};
         
         if ($params->{ok}) {
-          use Data::Dumper;
           $clients->{$cid}{current_role} = $params->{current_role};
           return $controller->render(json => {ok => 1});
         }
@@ -159,7 +136,7 @@ sub startup {
         }
       }
       elsif ($type eq 'task_result') {
-        $log->info('Recieve task result' . $client_info->($cid));
+        $log->info('Recieve task result' . $manager->client_info($cid));
         
         my $message_id = $params->{message_id};
         my $controller = delete $controllers->{$message_id};
@@ -175,10 +152,10 @@ sub startup {
       else {
         if (my $message = $params->{message}) {
           if ($params->{error}) {
-            $log->error($client_info->($cid) . " send error message");
+            $log->error($manager->client_info($cid) . " send error message");
           }
           else {
-            $log->info($client_info->($cid) . " send success message");
+            $log->info($manager->client_info($cid) . " send success message");
           }
         }
       }
@@ -187,7 +164,7 @@ sub startup {
     # Client disconnected
     $self->on('finish' => sub {
       # Remove client
-      my $info = $client_info->($cid);
+      my $info = $manager->client_info($cid);
       delete $clients->{$cid};
       $dbi->model('client')->delete(id => $cid);
       $log->info("Client Disconnect. " . $info);
@@ -244,7 +221,7 @@ sub startup {
           message_id => $mid
         }
       });
-      $log->info('Send sync command' . $client_info->($cid));
+      $log->info('Send sync command' . $manager->client_info($cid));
       $self->render_later;
     }
     else {
@@ -271,7 +248,7 @@ sub startup {
         message_id => $mid
       }
     });
-    $log->info('Send task command' . $client_info->($cid));
+    $log->info('Send task command' . $manager->client_info($cid));
     $self->render_later;
   });
 

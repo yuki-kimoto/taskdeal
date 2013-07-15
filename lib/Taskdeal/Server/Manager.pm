@@ -9,6 +9,24 @@ use File::Path 'rmtree';
 has 'home';
 has 'app';
 
+sub client_info {
+  my ($self, $cid) = @_;
+  
+  my $row = $self->app->dbi->model('client')->select(id => $cid)->one;
+  
+  my $name = $row->{name};
+  my $group = $row->{group};
+  my $host = $row->{host};
+  my $port = $row->{port};
+  
+  my $info = "[";
+  $info .= "Name:$name, " if length $name;
+  $info .= "Group:$group, " if length $group;
+  $info .= "Host:$host:$port, ID:$cid]";
+  
+  return $info;
+}
+
 sub roles_dir {
   my $self = shift;
   
