@@ -85,6 +85,16 @@ sub startup {
   
   # Routes
   my $r = $self->routes;
+
+  # DBViewer(only development)
+  if ($self->mode eq 'development') {
+    eval {
+      $self->plugin(
+        'DBViewer',
+        dsn => "dbi:SQLite:database=$db_file"
+      );
+    };
+  }
   
   # Receive
   $r->websocket('/' => sub {
@@ -116,19 +126,20 @@ sub startup {
       
       if ($type eq 'client_info') {
         
+        # Create client information
         my $p = {};
-        
         $p->{id} = $cid;
-        $p->{name} = $params->{name};
-        $p->{name} = '' unless defined $p->{name};
-        $p->{current_role} = $params->{current_role};
-        $p->{current_role} = '' unless defined $p->{current_role};
-        $p->{group} = $params->{group};
-        $p->{group} = '' unless defined $p->{group};
+        $p->{name} = defined $params->{name} ? $params->{name} : '';
+        $p->{current_role}
+          = defined $params->{current_role} ? $params->{current_role} : '';
+        $p->{client_group} = defined $params->{group} ? $params->{group} : '';
+        $p->{description}
+          = defined $params->{description} ? $params->{description} : '';
         $p->{host} = $clients->{$cid}{host};
         $p->{port} = $clients->{$cid}{port};
         $dbi->model('client')->insert($p);
         
+        # Log client connect
         $log->info("Client Connect. " . $client_info->($cid));
       }
       elsif ($type eq 'sync_result') {

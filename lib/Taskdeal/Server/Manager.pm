@@ -103,7 +103,7 @@ EOS
 
   # Create client columns
   my $user_columns = [
-    q/"group" not null default ''/,
+    "client_group not null default ''",
     "name not null default ''",
     "description not null default ''",
     "host not null default ''",
@@ -117,7 +117,7 @@ EOS
   # Check user table
   eval {
     $dbi->select(
-      {client => [qw/row_id id group name description host port/]},
+      {client => [qw/row_id id client_group name description host port/]},
       table => 'client'
     );
   };

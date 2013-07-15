@@ -9,7 +9,7 @@
   my $name = param('name');
   my $group = param('group');
   my $host = param('host');
-  my $port = param('host');
+  my $port = param('port');
 
   # Limit
   my $page = param('page') || 1;
@@ -21,7 +21,7 @@
   my $clause = ['and',
     ':id{like}',
     ':name{like}',
-    $mode eq 'group' ? "$group_q = :group" : "$group_q like :group",
+    $mode eq 'group' ? ":client_group{=}" : ":client_group{like}",
     ':host{like}',
     ':port{like}'
   ];
@@ -29,20 +29,21 @@
   $p->{id} = "%$id%" if defined $id && length $id;
   $p->{name} = "%$name%" if defined $name && length $name;
   if ($mode eq 'group') {
-    $p->{group} = $group;
-    $p->{group} = '' unless defined $group;
+    $p->{client_group} = $group;
+    $p->{client_group} = '' unless defined $group;
   }
   else {
-    $p->{group} = "%$group%" if defined $group && length $group;
+    $p->{client_group} = "%$group%" if defined $group && length $group;
   }
   $p->{host} = "%$host%" if defined $host && length $host;
   $p->{port} = "%$port%" if defined $port && length $port;
   my $where = $dbi->where;
   $where->clause($clause);
   $where->param($p);
+  warn "$where";
   
   my $clients = $dbi->model('client')->select(
-    append => "order by $group_q, name, host, port",
+    append => "order by client_group, name, host, port",
     where => $where,
     append => "limit $offset, $count"
   )->all;
@@ -56,8 +57,8 @@
   my $pager = Data::Page->new($total, $count, $page);
 
   my $groups = $dbi->model('client')->select(
-    $group_q,
-    append => "group by $group_q order by $group_q"
+    'client_group',
+    append => "group by client_group order by client_group"
   )->values;
 %>
 
@@ -229,7 +230,7 @@
         % my $cid = $client->{id};
 
         <tr cid="<%= $cid %>">
-          % my $group = $client->{group};
+          % my $group = $client->{client_group};
           % my $name = $client->{name};
           % my $description = $client->{description};
           % my $host = $client->{host};
