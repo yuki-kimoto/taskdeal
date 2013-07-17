@@ -120,8 +120,8 @@ sub startup {
         # Log client connect
         $log->info("Client Connect. " . $manager->client_info($cid));
       }
-      elsif ($type eq 'sync_result') {
-        $log->info('Recieve sync result' . $manager->client_info($cid));
+      elsif ($type eq 'role_result') {
+        $log->info('Recieve role result' . $manager->client_info($cid));
         
         my $message_id = $params->{message_id};
         my $controller = delete $controllers->{$message_id};
@@ -190,7 +190,7 @@ sub startup {
     $self->render('/index');
   });
 
-  $r->get('/api/tasks.json' => sub {
+  $r->get('/api/tasks' => sub {
     my $self = shift;
     
     my $role = $self->param('role');
@@ -200,7 +200,7 @@ sub startup {
     $self->render(json => {tasks => $tasks});
   });
 
-  $r->post('/api/role/sync' => sub {
+  $r->post('/api/role/select' => sub {
     my $self = shift;
     
     # Controllers
@@ -215,13 +215,13 @@ sub startup {
     if ($c) {
       $c->send({
         json => {
-          type => 'sync',
+          type => 'role',
           role_name => $role,
           role_tar => $role_tar,
           message_id => $mid
         }
       });
-      $log->info('Send sync command' . $manager->client_info($cid));
+      $log->info('Send role command' . $manager->client_info($cid));
       $self->render_later;
     }
     else {

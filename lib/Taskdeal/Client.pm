@@ -88,14 +88,14 @@ sub startup {
             
             my $type = $hash->{type} || '';
             
-            if ($type eq 'sync') {
+            if ($type eq 'role') {
               my $role_name = $hash->{role_name};
               my $role_tar = $hash->{role_tar};
 
-              $log->info("Receive sync command. Role is $role_name");
+              $log->info("Receive role command. Role is $role_name");
 
               my $result = {
-                type => 'sync_result',
+                type => 'role_result',
                 message_id => $hash->{message_id}
               };
               if (defined $role_name && length $role_name) {

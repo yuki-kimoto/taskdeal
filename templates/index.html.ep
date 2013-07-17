@@ -1,10 +1,8 @@
 <%
   use Data::Page ();
   
-  my $roles = app->manager->roles;
+  # Parameters
   my $mode = param('mode') || '';
-  
-  my $dbi = app->dbi;
   my $id = param('id');
   my $name = param('name');
   my $group = param('group');
@@ -17,7 +15,7 @@
   my $offset = ($page - 1) * $count;
 
   # Where
-  my $group_q = $dbi->q('group');
+  my $dbi = app->dbi;
   my $clause = ['and',
     ':id{like}',
     ':name{like}',
@@ -40,8 +38,8 @@
   my $where = $dbi->where;
   $where->clause($clause);
   $where->param($p);
-  warn "$where";
   
+  # Cleints
   my $clients = $dbi->model('client')->select(
     append => "order by client_group, name, host, port",
     where => $where,
@@ -58,7 +56,11 @@
     )->value;
     $pager = Data::Page->new($total, $count, $page);
   }
+  
+  # Roles
+  my $roles = app->manager->roles;
 
+  # Group
   my $groups = $dbi->model('client')->select(
     'client_group',
     append => "group by client_group order by client_group"
@@ -83,12 +85,13 @@
         form.find("[name=port]").val('');
       });
       
+      // Select role
       $("[name=role]").on('change', function () {
         var that = this;
         var role = $(this).val();
         var cid = $(this).closest('tr').attr('cid');
         
-        $.post("<%= url_for('/api/role/sync') %>", {cid:cid, role:role}, function (result) {
+        $.post("<%= url_for('/api/role/select') %>", {cid:cid, role:role}, function (result) {
           if (result.ok) {
             if (role == null || role === '') {
               alert('Role is removed');
@@ -105,7 +108,7 @@
               return;
             }
             
-            $.get("<%= url_for('/api/tasks.json') %>", {role:role}, function (result) {
+            $.get("<%= url_for('/api/tasks') %>", {role:role}, function (result) {
               var tasks = result.tasks;
               
               if (tasks) {
@@ -124,7 +127,8 @@
           }
         });
       });
-
+      
+      // Execute task
       $("[name=execute]").on('click', function () {
         var role = $(this).closest('tr').find('[name=role]').val();
         var task = $(this).closest('tr').find('[name=task]').val();
@@ -149,8 +153,9 @@
           }
         });
       });
-
-      $("[name=sync_group]").on('click', function () {
+      
+      // Select group role
+      $("[name=role_group]").on('click', function () {
         
         var role = $(this).closest('.group-manip').find('[name=role_group]').val();
         
@@ -159,7 +164,7 @@
         task_select.append('<option value="">-</option>');
         
         if (role != null && role !== '') {
-          $.get("<%= url_for('/api/tasks.json') %>", {role:role}, function (result) {
+          $.get("<%= url_for('/api/tasks') %>", {role:role}, function (result) {
             var tasks = result.tasks;
             
             if (tasks) {
@@ -181,7 +186,7 @@
         
         for (var i = 0; i < cids.length; i++) {
           var cid = cids[i];
-          $.post("<%= url_for('/api/role/sync') %>", {cid:cid, role:role}, function (result) {
+          $.post("<%= url_for('/api/role/select') %>", {cid:cid, role:role}, function (result) {
             var tr = $('.clients').find('tr[cid=' + cid + ']');
             var message = tr.find('.message');
             var role_td = tr.find('.role');
@@ -260,7 +265,7 @@
         <big><b>Group:</b> <%= $group_str %></big><br>
         <b>Role:</b>
         <%= select_field role_group => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-top:8px" %>
-        <button class="btn" name="sync_group" style="margin:0;margin-right:10px;padding:0 4px;">Sync</button>
+        <button class="btn" name="role_group" style="margin:0;margin-right:10px;padding:0 4px;">Select</button>
         
         <b>Task:</b>
         <%= select_field task_group => [['-' => '']], id => "task", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
