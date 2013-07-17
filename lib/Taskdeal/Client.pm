@@ -55,6 +55,7 @@ sub startup {
   $ENV{TASKDEAL_SERVER_PORT} = 3000;
   my $server_port = $ENV{TASKDEAL_SERVER_PORT} || $config->{server}{port} || '10040';
   $server_url .= ":$server_port";
+  $server_url .= "/connect";
   
   Mojo::IOLoop->timer(0 => sub {
     # Connect to server

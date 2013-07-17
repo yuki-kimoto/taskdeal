@@ -78,7 +78,7 @@ sub startup {
     }
   
   # Receive
-  $r->websocket('/' => sub {
+  $r->websocket('/connect' => sub {
     my $self = shift;
     
     # Client id
