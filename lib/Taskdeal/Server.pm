@@ -128,7 +128,12 @@ sub startup {
         my $message = $params->{message};
         
         if ($params->{ok}) {
-          $clients->{$cid}{current_role} = $params->{current_role};
+          my $current_role = $params->{current_role};
+          $current_role = '' unless defined $current_role;
+          $dbi->model('client')->update(
+            {current_role => $current_role},
+            id => $cid
+          );
           return $controller->render(json => {ok => 1});
         }
         else {
@@ -186,8 +191,16 @@ sub startup {
   $r->get('/' => sub {
     my $self = shift;
     
+    # Tasks
+    my $roles = $manager->roles;
+    my $tasks_h = {};
+    for my $role (@$roles) {
+      my $tasks = $manager->tasks($role);
+      $tasks_h->{$role} = $tasks;
+    }
+    
     # Render
-    $self->render('/index');
+    $self->render('/index', tasks_h => $tasks_h);
   });
 
   $r->get('/api/tasks' => sub {

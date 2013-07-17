@@ -208,7 +208,6 @@
           });
         }
       });
-      
     });
   % end
 
@@ -318,7 +317,8 @@
             <td class="message" style="width:200px"></td>
           % } else {
             <td>
-              <%= select_field task => [['-' => '']], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
+              % my $tasks = $tasks_h->{$current_role} || [];
+              <%= select_field task => [['-' => ''], @$tasks], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
               <button class="btn" name="execute" style="margin:0;padding:0 4px;height:20px;">Execute</button>
             </td>
           % }
