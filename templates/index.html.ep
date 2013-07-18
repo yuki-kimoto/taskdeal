@@ -208,6 +208,34 @@
           });
         }
       });
+      
+      // Execute group task
+      $("[name=execute_task_group]").on('click', function () {
+        var role_group = $(this).closest('.group-manip').find('[name=role_group]').val();
+        var task_group = $(this).closest('.group-manip').find('[name=task_group]').val();
+
+        $('.role').each(function () {
+          var role = $(this).attr('value');
+          var message = $(this).closest('tr').find('.message');
+          var cid = $(this).closest('tr').attr('cid');
+          
+          if (role_group === role) {
+            $.post("<%= url_for('/api/task/execute') %>", {cid:cid, role:role_group, task:task_group}, function (result) {
+              if (result.ok) {
+                message.text('Task ' + task_group + ' success.');
+              }
+              else {
+                message.css('color', 'red');
+                message.text('Error:' + result.message);
+              }
+            });
+          }
+          else {
+            message.css('color', 'red');
+            message.text('Current role is difference from selected role');
+          }
+        });
+      });
     });
   % end
 
@@ -268,7 +296,7 @@
         
         <b>Task:</b>
         <%= select_field task_group => [['-' => '']], id => "task", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
-        <button class="btn" name="execute_group" style="margin:0;padding:0 4px;">Execute</button>
+        <button class="btn" name="execute_task_group" style="margin:0;padding:0 4px;">Execute</button>
       </div>
     % }
     
@@ -305,7 +333,7 @@
           <td><%= $description %></td>
           <td><%= $host %></td>
           <td><%= $port %></td>
-            <td class="role">
+            <td class="role" value="<%= $current_role %>">
               % if ($mode ne 'group') {
                 % param(role => $current_role);
                 <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
