@@ -155,7 +155,7 @@
       });
       
       // Select group role
-      $("[name=role_group]").on('click', function () {
+      $("[name=select_role_group]").on('click', function () {
         
         var role = $(this).closest('.group-manip').find('[name=role_group]').val();
         
@@ -264,7 +264,7 @@
         <big><b>Group:</b> <%= $group_str %></big><br>
         <b>Role:</b>
         <%= select_field role_group => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-top:8px" %>
-        <button class="btn" name="role_group" style="margin:0;margin-right:10px;padding:0 4px;">Select</button>
+        <button class="btn" name="select_role_group" style="margin:0;margin-right:10px;padding:0 4px;">Select</button>
         
         <b>Task:</b>
         <%= select_field task_group => [['-' => '']], id => "task", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
