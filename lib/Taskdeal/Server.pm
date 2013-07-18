@@ -66,7 +66,28 @@ sub startup {
   
   # Routes
   my $r = $self->routes;
-
+  
+  {
+    my $r = $r->under(sub {
+      my $self = shift;
+      
+      my $ip = $self->tx->remote_address;
+      
+      # Admin page ip control
+      unless ($manager->is_allow($ip, %{$config->{ip_control_admin}})) {
+        $self->res->code('403');
+        return;
+      }
+      
+      # Client ip control
+      unless ($manager->is_allow($ip, %{$config->{ip_control_client}})) {
+        $self->res->code('403');
+        return;
+      }
+      
+      return 1;
+    });
+    
     # DBViewer(only development)
     if ($self->mode eq 'development') {
       eval {
@@ -76,194 +97,195 @@ sub startup {
         );
       };
     }
-  
-  # Receive
-  $r->websocket('/connect' => sub {
-    my $self = shift;
     
-    # Client id
-    my $object_id = "$self";
-    my ($cid) = $object_id =~ /\(0x(.+?)\)$/;
-    
-    # Resist controller
-    $clients->{$cid}{controller} = $self;
-    
-    # Register Client information
-    my $params = {
-      id => $cid,
-      host => $self->tx->remote_address,
-      port => $self->tx->remote_port
-    };
-    $dbi->model('client')->insert($params);
-    
-    # Connected message
-    $log->info("Success Websocket Handshake. " . $manager->client_info($cid));
-    
-    # Receive client params
-    $self->on(json => sub {
-      my ($tx, $params) = @_;
+    # Receive
+    $r->websocket('/connect' => sub {
+      my $self = shift;
       
-      my $type = $params->{type} || '';
+      # Client id
+      my $object_id = "$self";
+      my ($cid) = $object_id =~ /\(0x(.+?)\)$/;
       
-      if ($type eq 'client_info') {
+      # Resist controller
+      $clients->{$cid}{controller} = $self;
+      
+      # Register Client information
+      my $params = {
+        id => $cid,
+        host => $self->tx->remote_address,
+        port => $self->tx->remote_port
+      };
+      $dbi->model('client')->insert($params);
+      
+      # Connected message
+      $log->info("Success Websocket Handshake. " . $manager->client_info($cid));
+      
+      # Receive client params
+      $self->on(json => sub {
+        my ($tx, $params) = @_;
         
-        # Create client information
-        my $p = {};
-        $p->{name} = defined $params->{name} ? $params->{name} : '';
-        $p->{current_role}
-          = defined $params->{current_role} ? $params->{current_role} : '';
-        $p->{client_group} = defined $params->{group} ? $params->{group} : '';
-        $p->{description}
-          = defined $params->{description} ? $params->{description} : '';
-        $dbi->model('client')->update($p, id => $cid);
+        my $type = $params->{type} || '';
         
-        # Log client connect
-        $log->info("Client Connect. " . $manager->client_info($cid));
-      }
-      elsif ($type eq 'role_result') {
-        $log->info('Recieve role result' . $manager->client_info($cid));
-        
-        my $message_id = $params->{message_id};
-        my $controller = delete $controllers->{$message_id};
-        my $message = $params->{message};
-        
-        if ($params->{ok}) {
-          my $current_role = $params->{current_role};
-          $current_role = '' unless defined $current_role;
-          $dbi->model('client')->update(
-            {current_role => $current_role},
-            id => $cid
-          );
-          return $controller->render(json => {ok => 1});
+        if ($type eq 'client_info') {
+          
+          # Create client information
+          my $p = {};
+          $p->{name} = defined $params->{name} ? $params->{name} : '';
+          $p->{current_role}
+            = defined $params->{current_role} ? $params->{current_role} : '';
+          $p->{client_group} = defined $params->{group} ? $params->{group} : '';
+          $p->{description}
+            = defined $params->{description} ? $params->{description} : '';
+          $dbi->model('client')->update($p, id => $cid);
+          
+          # Log client connect
+          $log->info("Client Connect. " . $manager->client_info($cid));
         }
-        else {
-          return $controller->render(json => {ok => 0, message => $message});
-        }
-      }
-      elsif ($type eq 'task_result') {
-        $log->info('Recieve task result' . $manager->client_info($cid));
-        
-        my $message_id = $params->{message_id};
-        my $controller = delete $controllers->{$message_id};
-        my $message = $params->{message};
-        
-        if ($params->{ok}) {
-          return $controller->render(json => {ok => 1});
-        }
-        else {
-          return $controller->render(json => {ok => 0, message => $message});
-        }
-      }
-      else {
-        if (my $message = $params->{message}) {
-          if ($params->{error}) {
-            $log->error($manager->client_info($cid) . " send error message");
+        elsif ($type eq 'role_result') {
+          $log->info('Recieve role result' . $manager->client_info($cid));
+          
+          my $message_id = $params->{message_id};
+          my $controller = delete $controllers->{$message_id};
+          my $message = $params->{message};
+          
+          if ($params->{ok}) {
+            my $current_role = $params->{current_role};
+            $current_role = '' unless defined $current_role;
+            $dbi->model('client')->update(
+              {current_role => $current_role},
+              id => $cid
+            );
+            return $controller->render(json => {ok => 1});
           }
           else {
-            $log->info($manager->client_info($cid) . " send success message");
+            return $controller->render(json => {ok => 0, message => $message});
           }
         }
+        elsif ($type eq 'task_result') {
+          $log->info('Recieve task result' . $manager->client_info($cid));
+          
+          my $message_id = $params->{message_id};
+          my $controller = delete $controllers->{$message_id};
+          my $message = $params->{message};
+          
+          if ($params->{ok}) {
+            return $controller->render(json => {ok => 1});
+          }
+          else {
+            return $controller->render(json => {ok => 0, message => $message});
+          }
+        }
+        else {
+          if (my $message = $params->{message}) {
+            if ($params->{error}) {
+              $log->error($manager->client_info($cid) . " send error message");
+            }
+            else {
+              $log->info($manager->client_info($cid) . " send success message");
+            }
+          }
+        }
+      });
+      
+      # Client disconnected
+      $self->on('finish' => sub {
+        # Remove client
+        my $info = $manager->client_info($cid);
+        delete $clients->{$cid};
+        $dbi->model('client')->delete(id => $cid);
+        $log->info("Client Disconnect. " . $info);
+      });
+    });
+
+    $r->post('/task' => sub {
+      my $self = shift;
+      
+      my $cid = $self->param('id');
+      my $command = $self->param('command');
+      
+      $clients->{$cid}{controller}->send(json => {
+        type => 'task',
+        command => $command
+      });
+    });
+
+    $r->get('/' => sub {
+      my $self = shift;
+      
+      # Tasks
+      my $roles = $manager->roles;
+      my $tasks_h = {};
+      for my $role (@$roles) {
+        my $tasks = $manager->tasks($role);
+        $tasks_h->{$role} = $tasks;
+      }
+      
+      # Render
+      $self->render('/index', tasks_h => $tasks_h);
+    });
+
+    $r->get('/api/tasks' => sub {
+      my $self = shift;
+      
+      my $role = $self->param('role');
+      
+      my $tasks = $manager->tasks($role);
+      
+      $self->render(json => {tasks => $tasks});
+    });
+
+    $r->post('/api/role/select' => sub {
+      my $self = shift;
+      
+      # Controllers
+      my $mid = $message_id++;
+      $controllers->{$mid} = $self;
+      
+      # Sync role
+      my $cid = $self->param('cid');
+      my $role = $self->param('role');
+      my $role_tar = defined $role && length $role ? $manager->role_tar($role) : undef;
+      my $c = $clients->{$cid}{controller};
+      if ($c) {
+        $c->send({
+          json => {
+            type => 'role',
+            role_name => $role,
+            role_tar => $role_tar,
+            message_id => $mid
+          }
+        });
+        $log->info('Send role command' . $manager->client_info($cid));
+        $self->render_later;
+      }
+      else {
+        $self->render(json => {ok => 0, message => 'Client[ID:262f1b8] not found'});
       }
     });
     
-    # Client disconnected
-    $self->on('finish' => sub {
-      # Remove client
-      my $info = $manager->client_info($cid);
-      delete $clients->{$cid};
-      $dbi->model('client')->delete(id => $cid);
-      $log->info("Client Disconnect. " . $info);
-    });
-  });
-
-  $r->post('/task' => sub {
-    my $self = shift;
-    
-    my $cid = $self->param('id');
-    my $command = $self->param('command');
-    
-    $clients->{$cid}{controller}->send(json => {
-      type => 'task',
-      command => $command
-    });
-  });
-
-  $r->get('/' => sub {
-    my $self = shift;
-    
-    # Tasks
-    my $roles = $manager->roles;
-    my $tasks_h = {};
-    for my $role (@$roles) {
-      my $tasks = $manager->tasks($role);
-      $tasks_h->{$role} = $tasks;
-    }
-    
-    # Render
-    $self->render('/index', tasks_h => $tasks_h);
-  });
-
-  $r->get('/api/tasks' => sub {
-    my $self = shift;
-    
-    my $role = $self->param('role');
-    
-    my $tasks = $manager->tasks($role);
-    
-    $self->render(json => {tasks => $tasks});
-  });
-
-  $r->post('/api/role/select' => sub {
-    my $self = shift;
-    
-    # Controllers
-    my $mid = $message_id++;
-    $controllers->{$mid} = $self;
-    
-    # Sync role
-    my $cid = $self->param('cid');
-    my $role = $self->param('role');
-    my $role_tar = defined $role && length $role ? $manager->role_tar($role) : undef;
-    my $c = $clients->{$cid}{controller};
-    if ($c) {
-      $c->send({
+    $r->post('/api/task/execute' => sub {
+      my $self = shift;
+      
+      # Controllers
+      my $mid = $message_id++;
+      $controllers->{$mid} = $self;
+      
+      # Send task command
+      my $cid = $self->param('cid');
+      my $role = $self->param('role');
+      my $task = $self->param('task');
+      $clients->{$cid}{controller}->send({
         json => {
-          type => 'role',
-          role_name => $role,
-          role_tar => $role_tar,
+          type => 'task',
+          role => $role,
+          task => $task,
           message_id => $mid
         }
       });
-      $log->info('Send role command' . $manager->client_info($cid));
+      $log->info('Send task command' . $manager->client_info($cid));
       $self->render_later;
-    }
-    else {
-      $self->render(json => {ok => 0, message => 'Client[ID:262f1b8] not found'});
-    }
-  });
-  
-  $r->post('/api/task/execute' => sub {
-    my $self = shift;
-    
-    # Controllers
-    my $mid = $message_id++;
-    $controllers->{$mid} = $self;
-    
-    # Send task command
-    my $cid = $self->param('cid');
-    my $role = $self->param('role');
-    my $task = $self->param('task');
-    $clients->{$cid}{controller}->send({
-      json => {
-        type => 'task',
-        role => $role,
-        task => $task,
-        message_id => $mid
-      }
     });
-    $log->info('Send task command' . $manager->client_info($cid));
-    $self->render_later;
-  });
+  }
 
   $ENV{MOJO_INACTIVITY_TIMEOUT} = 0;
 }

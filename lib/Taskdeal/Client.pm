@@ -69,9 +69,9 @@ sub startup {
           $log->info("Connect to $server_url.");
           
           # Send client information
-          my $hostname = hostname;
           my $current_role = $manager->current_role;
           my $name = $config->{client}{name};
+          $name = hostname unless defined $name;
           my $group = $config->{client}{group};
           my $description = $config->{client}{description};
           $tx->send({json => {
