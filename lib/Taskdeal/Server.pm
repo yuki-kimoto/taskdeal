@@ -9,11 +9,15 @@ use lib "$FindBin::Bin/../extlib/lib/perl5";
 
 use Taskdeal::Log;
 use Taskdeal::Server::Manager;
+use Taskdeal::Server::API;
+use Validator::Custom;
 use DBIx::Custom;
 use Scalar::Util 'weaken';
+use Mojolicious::Plugin::AutoRoute::Util 'template';
 
 has 'manager';
 has 'dbi';
+has 'validator';
 
 # Clients
 my $clients = {};
@@ -58,7 +62,19 @@ sub startup {
   # Setup database
   $manager->setup_database;
 
+  # Validator
+  my $validator = Validator::Custom->new;
+  $self->validator($validator);
+  $validator->register_constraint(
+    user_name => sub {
+      my $value = shift;
+      
+      return ($value || '') =~ /^[a-zA-Z0-9_\-]+$/
+    }
+  );
+  
   # Model
+  $dbi->create_model({table => 'user', primary_key => 'id'});
   $dbi->create_model({table => 'client', primary_key => 'id'});
   
   # Remove all clients
@@ -97,6 +113,9 @@ sub startup {
         );
       };
     }
+    
+    # AutoRoute
+    $self->plugin('AutoRoute', route => $r);
     
     # Receive
     $r->websocket('/connect' => sub {
@@ -209,21 +228,6 @@ sub startup {
       });
     });
 
-    $r->get('/' => sub {
-      my $self = shift;
-      
-      # Tasks
-      my $roles = $manager->roles;
-      my $tasks_h = {};
-      for my $role (@$roles) {
-        my $tasks = $manager->tasks($role);
-        $tasks_h->{$role} = $tasks;
-      }
-      
-      # Render
-      $self->render('/index', tasks_h => $tasks_h);
-    });
-
     $r->get('/api/tasks' => sub {
       my $self = shift;
       
@@ -286,6 +290,11 @@ sub startup {
       $self->render_later;
     });
   }
+  
+  $self->helper(taskdeal_api => sub {
+    my $self = shift;
+    return Taskdeal::Server::API->new($self);
+  });
 
   $ENV{MOJO_INACTIVITY_TIMEOUT} = 0;
 }

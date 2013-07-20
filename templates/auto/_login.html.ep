@@ -1,0 +1,150 @@
+<%
+  # API
+  my $api = taskdeal_api;
+  
+  # Operator
+  my $op = param('op') || '';
+  
+  # DBI
+  my $dbi = $self->app->dbi;
+  
+  # Errors
+  my $error;
+  
+  # Login
+  if ($op eq 'login') {
+    
+    # Validation
+    my $params = $api->params;
+    my $validator = $self->app->validator;
+    my $password_check = sub {
+      my $values = shift;
+      
+      my ($id, $password) = @$values;
+      
+      my $row
+        = $dbi->model('user')->select(['password', 'salt'], id => $id)->one;
+      
+      return unless defined $password;
+
+      my $is_valid = $api->check_password(
+        $password,
+        $row->{salt},
+        $row->{password}
+      );
+      
+      return $is_valid;
+    };
+    my $rule = [
+      id => [
+        'any'
+      ],
+      password => [
+        'any'
+      ],
+      {password_check => [qw/id password/]}
+        => {copy => 0},
+        => [
+          $password_check
+        ],
+      save => {require => 0} => [
+        'defined'
+      ]
+    ];
+    my $vresult = $self->app->validator->validate($params, $rule);
+    
+    if ($vresult->is_ok) {
+      
+      # Login success
+      my $safe_params = $vresult->data;
+      my $id = $safe_params->{id};
+      my $password = $safe_params ->{password};
+      my $row = $self->app->dbi->model('user')->select(['admin', 'password'], id => $id)->one;
+      my $password_encrypted = $row->{password};
+      my $admin = $row->{admin};
+      session(user => $id);
+      session(password => $password_encrypted);
+      
+      if ($safe_params->{save}) {
+        # 2 weeks save
+        session(expires => time + 60 * 60 * 24 * 14);
+      }
+      
+      # Go to admin page
+      if ($admin) {
+        $self->redirect_to('/');
+        return 1;
+      }
+      # Go to user page
+      else {
+        $self->redirect_to("/$id");
+        return 1;
+      }
+    }
+    else { $error = 'User name or password is wrong' }
+  }
+%>
+
+% layout 'common', title => 'Sign in';
+
+  <!-- Login Page -->
+  
+  %= include '/include/header';
+
+  <div class="container">
+    % my $id = '';
+    % if (flash('admin_user_created')) {
+      % $id = 'admin';
+      <div class="alert alert-success">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        Admin user is created. Let's login as admin user.
+      </div>
+    % }
+
+    % if (my $messages = flash('messages')) {
+      <div class="alert alert-success">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        % for my $message (@$messages) {
+          <p><%= $message %></p>
+        % }
+      </div>
+    % }
+    
+    % if ($error) {
+      <div class="alert alert-error">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        <div><%= $error %></div>
+      </div>
+    % }
+      
+    <div class="well border-gray"
+      style="background:white;padding-top:15px;padding-left:60px;width:300px;margin-left:auto;margin-right:auto"
+    >
+      <form action="<%= url_for->query(op => 'login') %>" method="post">
+        <div class="control-group">
+          <label class="control-label" for="user-name">User name</label>
+          <div class="controls">
+            <%= input_tag id => $id, type => 'text', placeholder => 'User', id =>'user-name'%>
+          </div>
+        </div>
+        <div class="control-group">
+          <label class="control-label" for="input-password">Password</label>
+          <div class="controls">
+            <%= password_field 'password', id => 'input-password', placeholder => 'Password' %>
+          </div>
+        </div>
+        <div class="control-group">
+          <label class="checkbox">
+            <input type="checkbox" name="save" value="1"> Save
+          </label>
+        </div>
+        <div class="control-group">
+          <div class="controls">
+            <button type="submit" class="btn">Sign in</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  %= include '/include/footer';

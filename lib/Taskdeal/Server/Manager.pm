@@ -9,6 +9,16 @@ use File::Path 'rmtree';
 has 'home';
 has 'app';
 
+sub admin_user {
+  my $self = shift;
+  
+  # Admin user
+  my $admin_user = $self->app->dbi->model('user')
+    ->select(where => {admin => 1})->one;
+  
+  return $admin_user;
+}
+
 sub client_info {
   my ($self, $cid) = @_;
   
@@ -138,6 +148,35 @@ sub setup_database {
   
   my $dbi = $self->app->dbi;
   
+  # Create user table
+  eval {
+    my $sql = <<"EOS";
+create table user (
+  row_id integer primary key autoincrement,
+  id not null unique default ''
+);
+EOS
+    $dbi->execute($sql);
+  };
+
+  # Create user columns
+  my $user_columns = [
+    "admin not null default '0'",
+    "password not null default ''",
+    "salt not null default ''"
+  ];
+  for my $column (@$user_columns) {
+    eval { $dbi->execute("alter table user add column $column") };
+  }
+  
+  # Check user table
+  eval { $dbi->select([qw/row_id id admin password salt/], table => 'user') };
+  if ($@) {
+    my $error = "Can't create user table properly: $@";
+    $self->app->log->error($error);
+    croak $error;
+  }
+  
   # Create client table
   eval {
     my $sql = <<"EOS";
@@ -150,7 +189,7 @@ EOS
   };
 
   # Create client columns
-  my $user_columns = [
+  my $client_columns = [
     "client_group not null default ''",
     "name not null default ''",
     "description not null default ''",
@@ -158,11 +197,11 @@ EOS
     "port not null default ''",
     "current_role not null default ''"
   ];
-  for my $column (@$user_columns) {
+  for my $column (@$client_columns) {
     eval { $dbi->execute("alter table client add column $column") };
   }
   
-  # Check user table
+  # Check client table
   eval {
     $dbi->select(
       {client => [qw/row_id id client_group name description host port/]},

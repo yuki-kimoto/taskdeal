@@ -1,6 +1,6 @@
 <%
   use Data::Page ();
-  
+
   # Parameters
   my $mode = param('mode') || '';
   my $id = param('id');
@@ -58,13 +58,22 @@
   }
   
   # Roles
-  my $roles = app->manager->roles;
+  my $manager = app->manager;
+  my $roles = $manager->roles;
 
   # Group
   my $groups = $dbi->model('client')->select(
     'client_group',
     append => "group by client_group order by client_group"
   )->values;
+  
+  # Tasks
+  my $roles = $manager->roles;
+  my $tasks_h = {};
+  for my $role (@$roles) {
+    my $tasks = $manager->tasks($role);
+    $tasks_h->{$role} = $tasks;
+  }
 %>
 
 % layout 'common';
