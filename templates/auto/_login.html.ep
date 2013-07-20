@@ -46,10 +46,7 @@
         => {copy => 0},
         => [
           $password_check
-        ],
-      save => {require => 0} => [
-        'defined'
-      ]
+        ]
     ];
     my $vresult = $self->app->validator->validate($params, $rule);
     
@@ -65,10 +62,8 @@
       session(user => $id);
       session(password => $password_encrypted);
       
-      if ($safe_params->{save}) {
-        # 2 weeks save
-        session(expires => time + 60 * 60 * 24 * 14);
-      }
+      # session is keeped every 15 minutes
+      session(expiration => 60 * 15);
       
       # Go to admin page
       if ($admin) {
@@ -132,11 +127,6 @@
           <div class="controls">
             <%= password_field 'password', id => 'input-password', placeholder => 'Password' %>
           </div>
-        </div>
-        <div class="control-group">
-          <label class="checkbox">
-            <input type="checkbox" name="save" value="1"> Save
-          </label>
         </div>
         <div class="control-group">
           <div class="controls">

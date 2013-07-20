@@ -37,6 +37,16 @@ sub client_info {
   return $info;
 }
 
+sub is_admin {
+  my ($self, $user) = @_;
+  
+  # Check admin
+  my $is_admin = $self->app->dbi->model('user')
+    ->select('admin', id => $user)->value;
+  
+  return $is_admin;
+}
+
 sub is_allow {
   my ($self, $ip, %opt) = @_;
   

@@ -1,6 +1,6 @@
 <%
   use Data::Page ();
-
+  
   # Parameters
   my $mode = param('mode') || '';
   my $id = param('id');
@@ -155,7 +155,7 @@
         
         $.post("<%= url_for('/api/task/execute') %>", {cid:cid, role:role, task:task}, function (result) {
           if (result.ok) {
-            alert('Task command success.');
+            alert('Task ' + task + ' success.');
           }
           else {
             alert('Error:' + result.message);

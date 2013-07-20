@@ -18,10 +18,6 @@
     <link rel="shortcut icon" href="<%= url_for('/favicon.png') %>" type="image/png" >
   </head>
   <body>
-    %= stylesheet begin
-      %= include '/css/common';
-    % end
-
     %= content;
   </body>
 </html>

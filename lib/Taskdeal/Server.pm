@@ -83,40 +83,8 @@ sub startup {
   # Routes
   my $r = $self->routes;
   
+  # WebSocket
   {
-    my $r = $r->under(sub {
-      my $self = shift;
-      
-      my $ip = $self->tx->remote_address;
-      
-      # Admin page ip control
-      unless ($manager->is_allow($ip, %{$config->{ip_control_admin}})) {
-        $self->res->code('403');
-        return;
-      }
-      
-      # Client ip control
-      unless ($manager->is_allow($ip, %{$config->{ip_control_client}})) {
-        $self->res->code('403');
-        return;
-      }
-      
-      return 1;
-    });
-    
-    # DBViewer(only development)
-    if ($self->mode eq 'development') {
-      eval {
-        $self->plugin(
-          'DBViewer',
-          dsn => "dbi:SQLite:database=$db_file"
-        );
-      };
-    }
-    
-    # AutoRoute
-    $self->plugin('AutoRoute', route => $r);
-    
     # Receive
     $r->websocket('/connect' => sub {
       my $self = shift;
@@ -215,6 +183,53 @@ sub startup {
         $log->info("Client Disconnect. " . $info);
       });
     });
+  }
+  
+  # HTTP access
+  {
+    my $r = $r->under(sub {
+      my $self = shift;
+      
+      my $ip = $self->tx->remote_address;
+      
+      # Admin page ip control
+      unless ($manager->is_allow($ip, %{$config->{ip_control_admin}})) {
+        $self->res->code('403');
+        return;
+      }
+      
+      # Client ip control
+      unless ($manager->is_allow($ip, %{$config->{ip_control_client}})) {
+        $self->res->code('403');
+        return;
+      }
+      
+      # Check login
+      my $api = $self->taskdeal_api;
+      unless ($api->logined_admin) {
+        my $path_first = $self->req->url->path->parts->[0] || '';
+        unless ($path_first eq '_login') {
+          $self->redirect_to('/_login');
+          return;
+        }
+      }
+      
+      return 1;
+    });
+    
+    # DBViewer(only development)
+    if ($self->mode eq 'development') {
+      eval {
+        $self->plugin(
+          'DBViewer',
+          dsn => "dbi:SQLite:database=$db_file",
+          route => $r
+        );
+      };
+    }
+    
+    # AutoRoute
+    $self->plugin('AutoRoute', route => $r);
 
     $r->post('/task' => sub {
       my $self = shift;
