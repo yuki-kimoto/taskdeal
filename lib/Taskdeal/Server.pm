@@ -18,6 +18,7 @@ use Mojolicious::Plugin::AutoRoute::Util 'template';
 has 'manager';
 has 'dbi';
 has 'validator';
+has 'info_log';
 
 # Clients
 my $clients = {};
@@ -31,9 +32,14 @@ sub startup {
   # Home
   my $home = $self->home;
   
-  # Log
-  my $log = Taskdeal::Log->new(path => $home->rel_file('log/taskdeal-server.log'));
-  $self->log($log);
+  # Information log
+  my $info_log = Taskdeal::Log->new(path => $home->rel_file('log/server/info.log'));
+  $self->info_log($info_log);
+  
+  # Client command log
+  my $client_command_log = Taskdeal::Log->new(
+    path => $home->rel_file('log/server/client-command.log')
+  );
 
   # Config
   my $config = $self->plugin('INIConfig', ext => 'conf');
@@ -105,13 +111,16 @@ sub startup {
       $dbi->model('client')->insert($params);
       
       # Connected message
-      $log->info("Success Websocket Handshake. " . $manager->client_info($cid));
+      $info_log->info("Success Websocket Handshake. " . $manager->client_info($cid));
       
       # Receive client params
       $self->on(json => sub {
         my ($tx, $params) = @_;
         
         my $type = $params->{type} || '';
+        
+        use Data::Dumper;
+        warn "aaaaaaaaaaaaaaaaaaaaa " . Dumper($params);
         
         if ($type eq 'client_info') {
           
@@ -126,10 +135,10 @@ sub startup {
           $dbi->model('client')->update($p, id => $cid);
           
           # Log client connect
-          $log->info("Client Connect. " . $manager->client_info($cid));
+          $info_log->info("Client Connect. " . $manager->client_info($cid));
         }
         elsif ($type eq 'role_result') {
-          $log->info('Recieve role result' . $manager->client_info($cid));
+          $info_log->info('Recieve role result' . $manager->client_info($cid));
           
           my $message_id = $params->{message_id};
           my $controller = delete $controllers->{$message_id};
@@ -149,7 +158,7 @@ sub startup {
           }
         }
         elsif ($type eq 'task_result') {
-          $log->info('Recieve task result' . $manager->client_info($cid));
+          $info_log->info('Recieve task result' . $manager->client_info($cid));
           
           my $message_id = $params->{message_id};
           my $controller = delete $controllers->{$message_id};
@@ -162,13 +171,19 @@ sub startup {
             return $controller->render(json => {ok => 0, message => $message});
           }
         }
+        elsif ($type eq 'command_log') {
+          my $cid = $params->{cid};
+          my $line = $params->{line};
+          my $client_info = $manager->client_info($cid);
+          $client_command_log->info("$client_info $line");
+        }
         else {
           if (my $message = $params->{message}) {
             if ($params->{error}) {
-              $log->error($manager->client_info($cid) . " send error message");
+              $info_log->error($manager->client_info($cid) . " send error message");
             }
             else {
-              $log->info($manager->client_info($cid) . " send success message");
+              $info_log->info($manager->client_info($cid) . " send success message");
             }
           }
         }
@@ -180,7 +195,7 @@ sub startup {
         my $info = $manager->client_info($cid);
         delete $clients->{$cid};
         $dbi->model('client')->delete(id => $cid);
-        $log->info("Client Disconnect. " . $info);
+        $info_log->info("Client Disconnect. " . $info);
       });
     });
   }
@@ -274,7 +289,7 @@ sub startup {
             message_id => $mid
           }
         });
-        $log->info('Send role command' . $manager->client_info($cid));
+        $info_log->info('Send role command' . $manager->client_info($cid));
         $self->render_later;
       }
       else {
@@ -298,10 +313,11 @@ sub startup {
           type => 'task',
           role => $role,
           task => $task,
+          cid => $cid,
           message_id => $mid
         }
       });
-      $log->info('Send task command' . $manager->client_info($cid));
+      $info_log->info('Send task command' . $manager->client_info($cid));
       $self->render_later;
     });
   }

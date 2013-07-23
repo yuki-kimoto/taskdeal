@@ -53,6 +53,8 @@ sub cleanup_role {
   
   croak unless -d $role_dir;
   
+  chdir $home
+    or croak "Can't change directory $home: $!";
   for my $role (glob "$role_dir/*") {
     next if $role =~ /.gitdironly$/;
     rmtree $role;

@@ -26,10 +26,11 @@ sub startup {
   $ENV{TASKDEAL_HOME} = $home;
   
   # Log
-  my $log = Taskdeal::Log->new(path => $home->rel_file('log/taskdeal-client.log'));
+  my $info_log = Taskdeal::Log->new(path => $home->rel_file('log/client/info.log'));
+  my $command_log = Taskdeal::Log->new(path => $home->rel_file('log/client/command.log'));
 
   # Util
-  my $manager = Taskdeal::Client::Manager->new(home => "$home", log => $log);
+  my $manager = Taskdeal::Client::Manager->new(home => "$home", log => $info_log);
 
   # Config
   $self->plugin('INIConfig', ext => 'conf');
@@ -66,7 +67,7 @@ sub startup {
         
         # Web socket connection success
         if ($tx->is_websocket) {
-          $log->info("Connect to $server_url.");
+          $info_log->info("Connect to $server_url.");
           
           # Send client information
           my $current_role = $manager->current_role;
@@ -92,12 +93,14 @@ sub startup {
               my $role_name = $hash->{role_name};
               my $role_tar = $hash->{role_tar};
 
-              $log->info("Receive role command. Role is $role_name");
+              $info_log->info("Receive role command. Role is $role_name");
 
               my $result = {
                 type => 'role_result',
-                message_id => $hash->{message_id}
+                message_id => $hash->{message_id},
+                cid => $hash->{cid}
               };
+              
               if (defined $role_name && length $role_name) {
                 if (open my $fh, '<', \$role_tar) {
                   my $role_path = "$home/client/role/$role_name";
@@ -109,7 +112,7 @@ sub startup {
                     eval { $manager->cleanup_role };
                     if ($@) {
                       my $message = "Error: cleanup role: $@";
-                      $log->error($message);
+                      $info_log->error($message);
                       $result->{ok} = 0;
                       $result->{message} = $message;
                       $tx->send({json => $result});
@@ -123,7 +126,7 @@ sub startup {
                   }
                   else {
                     my $message = "Error: Can't read role tar: $!";
-                    $log->error($message);
+                    $info_log->error($message);
                     $result->{ok} = 0;
                     $result->{message} = $message;
                     $tx->send({json => $result});
@@ -131,7 +134,7 @@ sub startup {
                 }
                 else {
                   my $message = "Error: Can't open role tar: $!";
-                  $log->error($message);
+                  $info_log->error($message);
                   $result->{ok} = 0;
                   $result->{message} = $message;
                   $tx->send({json => $result});
@@ -141,7 +144,7 @@ sub startup {
                 eval { $manager->cleanup_role };
                 if ($@) {
                   my $message = "Error: cleanup role: $@";
-                  $log->error($message);
+                  $info_log->error($message);
                   $result->{ok} = 0;
                   $result->{message} = $message;
                   $tx->send({json => $result});
@@ -157,8 +160,9 @@ sub startup {
               my $role = $hash->{role};
               my $work_dir = "$home/client/role/$role";
               my $task = $hash->{task};
+              my $cid = $hash->{cid};
               
-              $log->info("Receive task command. Role is $role. Task is $task.");
+              $info_log->info("Receive task command. Role is $role. Task is $task.");
               
               my $result = {
                 type => 'task_result',
@@ -166,34 +170,64 @@ sub startup {
               };
               
               if (chdir $work_dir) {
+                my $task_re = qr/[a-zA-Z0-9_-]+/;
                 
-                if (system("./$task") == 0) {
-                  my $status = `echo $?`;
-                  if (($status || '') =~ /^0/) {
-                    my $message = "Task $task success.";
-                    $log->info($message);
-                    $result->{message} = $message;
-                    $result->{ok} = 1;
-                    $tx->send({json => $result});
-                  }
-                  else {
-                    my $message = "Task $task fail. Return bad status.";
-                    $log->error($message);
+                if (defined $task && $task =~ /$task_re/) {
+                  my $command = "./$task 2>&1";
+                  my $success = open my $fh, "$command |";
+                  $command_log->info("$command");
+                  
+                  $tx->send({json => {
+                    type => 'command_log',
+                    cid => $cid,
+                    message_id => $hash->{message_id},
+                    line => "$command"
+                  }});
+                  
+                  if ($success) {
+                    while (my $line = <$fh>) {
+                      $command_log->info($line);
+                      $tx->send({json => {
+                        type => 'command_log',
+                        cid => $cid,
+                        message_id => $hash->{message_id},
+                        line => $line
+                      }});
+                    }
+                    my $status = `echo $?`;
+                    if (($status || '') =~ /^0/) {
+                      my $message = "Task $task success.";
+                      $info_log->info($message);
+                      $result->{message} = $message;
+                      $result->{ok} = 1;
+                      $tx->send({json => $result});
+                    }
+                    else {
+                      my $message = "Task $task fail(Return bad status).";
+                      $info_log->error($message);
+                      $result->{message} = $message;
+                      $result->{ok} = 0;
+                      $tx->send({json => $result});
+                    }
+                  } else {
+                    my $message = "Task $task fail(Can't execute command).";
+                    $info_log->error($message);
                     $result->{message} = $message;
                     $result->{ok} = 0;
                     $tx->send({json => $result});
                   }
-                } else {
-                  my $message = "Task $task fail. Command fail.";
-                  $log->error($message);
+                }
+                else {
+                  my $message = "Task $task fail(Tas contains invalid character).";
+                  $info_log->error($message);
                   $result->{message} = $message;
                   $result->{ok} = 0;
                   $tx->send({json => $result});
                 }
               }
               else {
-                my $message = "Task $task fail. Can't change directory $work_dir: $!";
-                $log->error($message);
+                my $message = "Task $task fail(Can't change directory $work_dir: $!).";
+                $info_log->error($message);
                 $result->{message} = $message;
                 $result->{ok} = 0;
                 $tx->send({json => $result});
@@ -207,14 +241,14 @@ sub startup {
                 message => $message,
                 ok => 0
               };
-              $log->error($message);
+              $info_log->error($message);
               $tx->send({json => $result});
             }
           });
           
           # Finish websocket connection
           $tx->on(finish => sub {
-            $log->info("Disconnected.");
+            $info_log->info("Disconnected.");
             
             # Reconnect to server
             Mojo::IOLoop->timer($reconnect_interval => sub { goto $websocket_cb });
@@ -223,7 +257,7 @@ sub startup {
         
         # Web socket connection fail
         else {
-          $log->error("Can't connect to server: $server_url.");
+          $info_log->error("Can't connect to server: $server_url.");
           
           # Reconnect to server
           Mojo::IOLoop->timer($reconnect_interval => sub { goto $websocket_cb });

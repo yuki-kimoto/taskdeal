@@ -68,7 +68,6 @@
   )->values;
   
   # Tasks
-  my $roles = $manager->roles;
   my $tasks_h = {};
   for my $role (@$roles) {
     my $tasks = $manager->tasks($role);
