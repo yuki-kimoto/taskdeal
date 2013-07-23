@@ -23,13 +23,15 @@ sub startup {
 
   # Home
   my $home = $self->home;
-  $ENV{TASKDEAL_HOME} = $home;
+  $ENV{TASKDEAL_HOME} = "$home";
   
-  # Log
+  # Information log
   my $info_log = Taskdeal::Log->new(path => $home->rel_file('log/client/info.log'));
+  
+  # Command log
   my $command_log = Taskdeal::Log->new(path => $home->rel_file('log/client/command.log'));
 
-  # Util
+  # Manager
   my $manager = Taskdeal::Client::Manager->new(home => "$home", log => $info_log);
 
   # Config
@@ -40,11 +42,10 @@ sub startup {
   $self->plugin('INIConfig', {file => $my_conf_file}) if -f $my_conf_file;
   my $config = $self->config;
   
-  # Fix hypnotoad config
+  # hypnotoad config
   my $hypnotoad = $config->{hypnotoad};
   my $port = Mojo::IOLoop->generate_port;
   $hypnotoad->{listen} = ["http://*:$port"];
-  $hypnotoad->{workers} = 1;
 
   # User Agent
   my $ua = Mojo::UserAgent->new;
@@ -53,11 +54,11 @@ sub startup {
   # Server URL
   my $server_host = $config->{server}{host} || 'localhost';
   my $server_url = "ws://$server_host";
-  $ENV{TASKDEAL_SERVER_PORT} = 3000;
   my $server_port = $ENV{TASKDEAL_SERVER_PORT} || $config->{server}{port} || '10040';
   $server_url .= ":$server_port";
   $server_url .= "/connect";
   
+  # IOLoop
   Mojo::IOLoop->timer(0 => sub {
     # Connect to server
     my $websocket_cb;

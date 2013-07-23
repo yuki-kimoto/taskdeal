@@ -14,7 +14,8 @@ pm_to_blib
 MYMETA.json
 MYMETA.yml
 log/*
-!log/.gitignore
+!log/client/.gitignore
+!log/server/.gitignore
 script/hypnotoad.pid
 files/*
 !files/.gitignore
