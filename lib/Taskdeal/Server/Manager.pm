@@ -22,13 +22,14 @@ sub admin_user {
 sub client_info {
   my ($self, $cid) = @_;
   
+  # Client info
   my $row = $self->app->dbi->model('client')->select(id => $cid)->one;
-  
   my $name = $row->{name};
   my $group = $row->{group};
   my $host = $row->{host};
   my $port = $row->{port};
   
+  # Stringify
   my $info = "[";
   $info .= "Name:$name, " if length $name;
   $info .= "Group:$group, " if length $group;
@@ -50,10 +51,10 @@ sub is_admin {
 sub is_allow {
   my ($self, $ip, %opt) = @_;
   
+  # Local address
   return 1 if $ip eq '127.0.0.1' || '::1';
   
-  my $deny = $opt{deny};
-
+  # Check IP address
   if (my $allow_str = $opt{allow}) {
     my @allow = split / *, */, $allow_str;
     
@@ -80,6 +81,7 @@ sub is_allow {
 sub roles_dir {
   my $self = shift;
   
+  # Role directory
   my $home = $self->home;
   
   return "$home/server/roles";
@@ -88,6 +90,7 @@ sub roles_dir {
 sub role_path {
   my ($self, $role_name) = @_;
   
+  # Role path
   my $roles_dir = $self->roles_dir;
   my $role_path = "$roles_dir/$role_name";
   
@@ -108,16 +111,14 @@ sub roles {
     push @roles, $role;
   }
   
-  # Check role counts
-  
   return \@roles;
 }
 
 sub tasks {
   my ($self, $role_name) = @_;
   
+  # Role path
   return unless defined $role_name;
-  
   my $role_path = $self->role_path($role_name);
   
   # Search tasks
@@ -156,9 +157,9 @@ sub role_tar {
 sub setup_database {
   my $self = shift;
   
-  my $dbi = $self->app->dbi;
   
   # Create user table
+  my $dbi = $self->app->dbi;
   eval {
     my $sql = <<"EOS";
 create table user (

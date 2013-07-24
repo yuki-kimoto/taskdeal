@@ -10,6 +10,7 @@ sub app { shift->cntl->app }
 sub encrypt_password {
   my ($self, $password) = @_;
   
+  # Encrypt password
   my $salt;
   $salt .= int(rand 10) for (1 .. 40);
   my $password_encryped = md5_hex md5_hex "$salt$password";
@@ -20,6 +21,7 @@ sub encrypt_password {
 sub check_password {
   my ($self, $password, $salt, $password_encrypted) = @_;
   
+  # Check password;
   return unless defined $password && $salt && $password_encrypted;
   
   return md5_hex(md5_hex "$salt$password") eq $password_encrypted;
@@ -27,7 +29,8 @@ sub check_password {
 
 sub new {
   my ($class, $cntl) = @_;
-
+  
+  # Create object
   my $self = $class->SUPER::new(cntl => $cntl);
   
   return $self;
@@ -48,26 +51,24 @@ sub logined_admin {
 sub logined {
   my ($self, $user) = @_;
   
+  # Password
   my $c = $self->cntl;
-  
   my $dbi = $c->app->dbi;
-  
   my $current_user = $c->session('user');
   my $password = $c->session('password');
   return unless defined $password;
   
+  # Correct password
   my $correct_password
     = $dbi->model('user')->select('password', id => $current_user)->value;
   return unless defined $correct_password;
   
+  # Check password
   my $logined;
-  
   if (defined $user) {
     $logined = $user eq $current_user && $password eq $correct_password;
   }
-  else {
-    $logined = $password eq $correct_password
-  }
+  else { $logined = $password eq $correct_password }
   
   return $logined;
 }
@@ -75,8 +76,8 @@ sub logined {
 sub params {
   my $self = shift;
   
+  # Get parameters
   my $c = $self->cntl;
-  
   my %params;
   for my $name ($c->param) {
     my @values = $c->param($name);

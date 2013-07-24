@@ -117,11 +117,10 @@ sub startup {
       $self->on(json => sub {
         my ($tx, $params) = @_;
         
+        # Type
         my $type = $params->{type} || '';
         
-        use Data::Dumper;
-        warn "aaaaaaaaaaaaaaaaaaaaa " . Dumper($params);
-        
+        # Client info
         if ($type eq 'client_info') {
           
           # Create client information
@@ -137,13 +136,17 @@ sub startup {
           # Log client connect
           $info_log->info("Client Connect. " . $manager->client_info($cid));
         }
+        
+        # Role result
         elsif ($type eq 'role_result') {
           $info_log->info('Recieve role result' . $manager->client_info($cid));
           
+          # Parameters
           my $message_id = $params->{message_id};
           my $controller = delete $controllers->{$message_id};
           my $message = $params->{message};
           
+          # Result success
           if ($params->{ok}) {
             my $current_role = $params->{current_role};
             $current_role = '' unless defined $current_role;
@@ -153,39 +156,38 @@ sub startup {
             );
             return $controller->render(json => {ok => 1});
           }
+          # Result error
           else {
             return $controller->render(json => {ok => 0, message => $message});
           }
         }
+        
+        # Task result
         elsif ($type eq 'task_result') {
           $info_log->info('Recieve task result' . $manager->client_info($cid));
           
+          # Parameters
           my $message_id = $params->{message_id};
           my $controller = delete $controllers->{$message_id};
           my $message = $params->{message};
           
+          # Result success
           if ($params->{ok}) {
             return $controller->render(json => {ok => 1});
           }
+          
+          # Result error
           else {
             return $controller->render(json => {ok => 0, message => $message});
           }
         }
+        
+        # Command log
         elsif ($type eq 'command_log') {
           my $cid = $params->{cid};
           my $line = $params->{line};
           my $client_info = $manager->client_info($cid);
           $client_command_log->info("$client_info $line");
-        }
-        else {
-          if (my $message = $params->{message}) {
-            if ($params->{error}) {
-              $info_log->error($manager->client_info($cid) . " send error message");
-            }
-            else {
-              $info_log->info($manager->client_info($cid) . " send success message");
-            }
-          }
         }
       });
       
@@ -205,9 +207,8 @@ sub startup {
     my $r = $r->under(sub {
       my $self = shift;
       
-      my $ip = $self->tx->remote_address;
-      
       # Admin page ip control
+      my $ip = $self->tx->remote_address;
       unless ($manager->is_allow($ip, %{$config->{ip_control_admin}})) {
         $self->res->code('403');
         return;
@@ -245,19 +246,8 @@ sub startup {
     
     # AutoRoute
     $self->plugin('AutoRoute', route => $r);
-
-    $r->post('/task' => sub {
-      my $self = shift;
-      
-      my $cid = $self->param('id');
-      my $command = $self->param('command');
-      
-      $clients->{$cid}{controller}->send(json => {
-        type => 'task',
-        command => $command
-      });
-    });
-
+    
+    # Get tasks
     $r->get('/api/tasks' => sub {
       my $self = shift;
       
@@ -267,7 +257,8 @@ sub startup {
       
       $self->render(json => {tasks => $tasks});
     });
-
+    
+    # Select role
     $r->post('/api/role/select' => sub {
       my $self = shift;
       
@@ -297,6 +288,7 @@ sub startup {
       }
     });
     
+    # Execute task
     $r->post('/api/task/execute' => sub {
       my $self = shift;
       
@@ -322,6 +314,7 @@ sub startup {
     });
   }
   
+  # API
   $self->helper(taskdeal_api => sub {
     my $self = shift;
     return Taskdeal::Server::API->new($self);

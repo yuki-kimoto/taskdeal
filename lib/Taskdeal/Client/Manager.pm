@@ -10,16 +10,16 @@ has 'log';
 sub role_dir {
   my $self = shift;
   
+  # Role directory
   my $home = $self->home;
-  
   return "$home/client/role";
 }
 
 sub role_path {
   my ($self, $role_name) = @_;
   
+  # Role path
   my $role_dir = $self->role_dir;
-  
   return "$role_dir/$role_name";
 }
 
@@ -48,13 +48,16 @@ sub current_role {
 sub cleanup_role {
   my $self = shift;
   
+  # Check role directory
   my $home = $self->home;
   my $role_dir = "$home/client/role";
-  
   croak unless -d $role_dir;
   
+  # Change directory
   chdir $home
     or croak "Can't change directory $home: $!";
+  
+  # Cleanup direcotyr
   for my $role (glob "$role_dir/*") {
     next if $role =~ /.gitdironly$/;
     rmtree $role;
