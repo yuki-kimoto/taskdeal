@@ -38,7 +38,7 @@ sub startup {
   
   # Client command log
   my $client_command_log = Taskdeal::Log->new(
-    path => $home->rel_file('log/server/client-command.log')
+    path => $home->rel_file('log/server/client-terminal.log')
   );
 
   # Config

@@ -29,7 +29,7 @@ sub startup {
   my $info_log = Taskdeal::Log->new(path => $home->rel_file('log/client/info.log'));
   
   # Command log
-  my $command_log = Taskdeal::Log->new(path => $home->rel_file('log/client/command.log'));
+  my $command_log = Taskdeal::Log->new(path => $home->rel_file('log/client/terminal.log'));
 
   # Manager
   my $manager = Taskdeal::Client::Manager->new(home => "$home", log => $info_log);
@@ -187,6 +187,7 @@ sub startup {
                   
                   if ($success) {
                     while (my $line = <$fh>) {
+                      $line =~ s/\x0D?\x0A?$//;
                       $command_log->info($line);
                       $tx->send({json => {
                         type => 'command_log',
