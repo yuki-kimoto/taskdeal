@@ -44,9 +44,10 @@ sub startup {
   # Config
   my $config = $self->plugin('INIConfig', ext => 'conf');
 
-  # Workers is always 1
+  # Hypnotoad config
   my $hypnotoad = $config->{hypnotoad};
   $hypnotoad->{workers} = 1;
+  $hypnotoad->{listen} ||= [http://*:10040];
 
   # Tasks directory
   my $tasks_dir = $home->rel_dir('tasks');
