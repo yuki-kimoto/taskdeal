@@ -93,19 +93,19 @@
         form.find("[name=port]").val('');
       });
       
-      // Select role
-      $("[name=role]").on('change', function () {
+      // Update role
+      var update_role = function () {
         var that = this;
-        var role = $(this).val();
         var cid = $(this).closest('tr').attr('cid');
+        var role = $(this).closest('tr').find('[name=role]').val();
         
-        $.post("<%= url_for('/api/role/select') %>", {cid:cid, role:role}, function (result) {
+        $.post("<%= url_for('/api/role/update') %>", {cid:cid, role:role}, function (result) {
           if (result.ok) {
             if (role == null || role === '') {
               alert('Role is removed');
             }
             else {
-              alert('Role is changed to ' + role + '.');
+              alert('Role is updated to ' + role + '.');
             }
             
             var task_select = $(that).closest('tr').find('[name=task]');
@@ -134,10 +134,16 @@
             task_select.append('<option value="">-</option>');
           }
         });
-      });
+      };
+      
+      // Select role
+      $("[name=role]").on('change', update_role);
+      
+      // Update role
+      $("[name=role-update]").on('click', update_role);
       
       // Execute task
-      $("[name=execute]").on('click', function () {
+      $("[name=task-execute]").on('click', function () {
         var role = $(this).closest('tr').find('[name=role]').val();
         var task = $(this).closest('tr').find('[name=task]').val();
         var cid = $(this).closest('tr').attr('cid');
@@ -194,7 +200,7 @@
         
         for (var i = 0; i < cids.length; i++) {
           var cid = cids[i];
-          $.post("<%= url_for('/api/role/select') %>", {cid:cid, role:role}, function (result) {
+          $.post("<%= url_for('/api/role/update') %>", {cid:cid, role:role}, function (result) {
             var tr = $('.clients').find('tr[cid=' + cid + ']');
             var message = tr.find('.message');
             var role_td = tr.find('.role');
@@ -206,7 +212,7 @@
                 message.text('Role is removed');
               }
               else {
-                message.text('Role is changed to ' + role + '.');
+                message.text('Role is updated to ' + role + '.');
               }
             }
             else {
@@ -218,7 +224,7 @@
       });
       
       // Execute group task
-      $("[name=execute_task_group]").on('click', function () {
+      $("[name=task-execute-group]").on('click', function () {
         var role_group = $(this).closest('.group-manip').find('[name=role_group]').val();
         var task_group = $(this).closest('.group-manip').find('[name=task_group]').val();
 
@@ -300,11 +306,11 @@
         <big><b>Group:</b> <%= $group_str %></big><br>
         <b>Role:</b>
         <%= select_field role_group => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-top:8px" %>
-        <button class="btn" name="select_role_group" style="margin:0;margin-right:10px;padding:0 4px;">Select</button>
+        <button class="btn" name="select_role_group" style="margin:0;margin-right:10px;padding:0 4px;">Update</button>
         
         <b>Task:</b>
         <%= select_field task_group => [['-' => '']], id => "task", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
-        <button class="btn" name="execute_task_group" style="margin:0;padding:0 4px;">Execute</button>
+        <button class="btn" name="task-execute-group" style="margin:0;padding:0 4px;">Execute</button>
       </div>
     % }
     
@@ -348,6 +354,9 @@
               % } else {
                 <%= $current_role %>
               % }
+              % if ($mode ne 'group') {
+                <button class="btn" name="role-update" style="margin:0;padding:0 4px;height:20px;">Update</button>
+              % }
             </td>
           % if ($mode eq 'group') {
             <td class="message" style="width:200px"></td>
@@ -355,7 +364,7 @@
             <td>
               % my $tasks = $tasks_h->{$current_role} || [];
               <%= select_field task => [['-' => ''], @$tasks], id => "task-$cid", style => "width:200px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
-              <button class="btn" name="execute" style="margin:0;padding:0 4px;height:20px;">Execute</button>
+              <button class="btn" name="task-execute" style="margin:0;padding:0 4px;height:20px;">Execute</button>
             </td>
           % }
         </tr>

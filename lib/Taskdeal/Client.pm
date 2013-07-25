@@ -26,10 +26,16 @@ sub startup {
   $ENV{TASKDEAL_HOME} = "$home";
   
   # Information log
-  my $info_log = Taskdeal::Log->new(path => $home->rel_file('log/client/info.log'));
+  my $info_log = Taskdeal::Log->new(
+    path => $home->rel_file('log/client/info.log'),
+    app => $self
+  );
   
   # Command log
-  my $command_log = Taskdeal::Log->new(path => $home->rel_file('log/client/terminal.log'));
+  my $terminal_log = Taskdeal::Log->new(
+    path => $home->rel_file('log/client/terminal.log'),
+    app => $self
+  );
 
   # Manager
   my $manager = Taskdeal::Client::Manager->new(home => "$home", log => $info_log);
@@ -176,7 +182,7 @@ sub startup {
                 if (defined $task && $task =~ /$task_re/) {
                   my $command = "./$task 2>&1";
                   my $success = open my $fh, "$command |";
-                  $command_log->info("$command");
+                  $terminal_log->info("$command");
                   
                   $tx->send({json => {
                     type => 'command_log',
@@ -188,7 +194,7 @@ sub startup {
                   if ($success) {
                     while (my $line = <$fh>) {
                       $line =~ s/\x0D?\x0A?$//;
-                      $command_log->info($line);
+                      $terminal_log->info($line);
                       $tx->send({json => {
                         type => 'command_log',
                         cid => $cid,

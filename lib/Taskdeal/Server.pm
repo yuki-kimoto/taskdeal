@@ -33,12 +33,16 @@ sub startup {
   my $home = $self->home;
   
   # Information log
-  my $info_log = Taskdeal::Log->new(path => $home->rel_file('log/server/info.log'));
+  my $info_log = Taskdeal::Log->new(
+    path => $home->rel_file('log/server/info.log'),
+    app => $self
+  );
   $self->info_log($info_log);
   
   # Client command log
-  my $client_command_log = Taskdeal::Log->new(
-    path => $home->rel_file('log/server/client-terminal.log')
+  my $client_terminal_log = Taskdeal::Log->new(
+    path => $home->rel_file('log/server/client-terminal.log'),
+    app => $self
   );
 
   # Config
@@ -47,7 +51,7 @@ sub startup {
   # Hypnotoad config
   my $hypnotoad = $config->{hypnotoad};
   $hypnotoad->{workers} = 1;
-  $hypnotoad->{listen} ||= [http://*:10040];
+  $hypnotoad->{listen} ||= ['http://*:10040'];
 
   # Tasks directory
   my $tasks_dir = $home->rel_dir('tasks');
@@ -188,7 +192,7 @@ sub startup {
           my $cid = $params->{cid};
           my $line = $params->{line};
           my $client_info = $manager->client_info($cid);
-          $client_command_log->info("$client_info $line");
+          $client_terminal_log->info("$client_info $line");
         }
       });
       
@@ -259,8 +263,8 @@ sub startup {
       $self->render(json => {tasks => $tasks});
     });
     
-    # Select role
-    $r->post('/api/role/select' => sub {
+    # Update role
+    $r->post('/api/role/update' => sub {
       my $self = shift;
       
       # Controllers
