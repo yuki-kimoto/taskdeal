@@ -1,11 +1,10 @@
-package Taskdeal::Server;
-
-use Mojo::Base 'Mojolicious';
-
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../mojo/lib";
 use lib "$FindBin::Bin/../extlib/lib/perl5";
+
+package Taskdeal::Server;
+use Mojo::Base 'Mojolicious';
 
 use Taskdeal::Log;
 use Taskdeal::Server::Manager;
