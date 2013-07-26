@@ -21,7 +21,7 @@ my $reconnect_interval = 5;
 
 sub startup {
   my $self = shift;
-
+  
   # Home
   my $home = $self->home;
   $ENV{TASKDEAL_HOME} = "$home";
@@ -52,7 +52,7 @@ sub startup {
   # hypnotoad config
   my $hypnotoad = $config->{hypnotoad};
   my $port = Mojo::IOLoop->generate_port;
-  $hypnotoad->{listen} = ["http://*:$port"];
+  $ENV{MOJO_LISTEN} = "http://*:$port";
 
   # User Agent
   my $ua = Mojo::UserAgent->new;
