@@ -275,6 +275,4 @@ sub startup {
     };
     $websocket_cb->();
   });
-  
-  Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
 }
