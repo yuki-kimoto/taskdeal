@@ -31,8 +31,8 @@ sub client_info {
   
   # Stringify
   my $info = "[";
-  $info .= "Name:$name, " if length $name;
-  $info .= "Group:$group, " if length $group;
+  $info .= "Name:$name, " if defined $name && length $name;
+  $info .= "Group:$group, " if defined $group && length $group;
   $info .= "Host:$host:$port, ID:$cid]";
   
   return $info;
