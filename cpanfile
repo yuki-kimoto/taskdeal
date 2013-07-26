@@ -22,3 +22,8 @@ requires 'ExtUtils::ParseXS', '== 3.18';
 requires 'Test::MockModule', '== 0.05';
 requires 'Digest::SHA', '== 5.84';
 requires 'Archive::Tar', '== 1.92';
+requires 'Data::Page', '== 2.02';
+requires 'Class::Accessor::Chained', '== 0.01';
+requires 'Class::Accessor', '== 0.34';
+requires 'Test::Exception', '== 0.31';
+requires 'Sub::Uplevel', '== 0.24';
