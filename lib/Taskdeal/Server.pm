@@ -9,6 +9,19 @@ use lib "$FindBin::Bin/../extlib/lib/perl5";
   eval {require Digest::SHA; import Digest::SHA qw(sha1 sha1_hex)};
 }
 
+# --stop option immediatly stop
+{
+  use Mojo::Server::Hypnotoad;
+  package Mojo::Server::Hypnotoad;
+  no warnings 'redefine';
+  sub _stop {
+    _exit('Hypnotoad server not running.')
+      unless my $pid = shift->{prefork}->check_pid;
+    kill 'INT', $pid;
+    _exit("Stopping Hypnotoad server $pid.");
+  }
+}
+
 package Taskdeal::Server;
 use Mojo::Base 'Mojolicious';
 
