@@ -3,6 +3,12 @@ use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../mojo/lib";
 use lib "$FindBin::Bin/../extlib/lib/perl5";
 
+# Digest::SHA loading to Mojo::Util
+{
+  package Mojo::Util;
+  eval {require Digest::SHA; import Digest::SHA qw(sha1 sha1_hex)};
+}
+
 package Taskdeal::Client;
 use Mojo::Base 'Mojolicious';
 
