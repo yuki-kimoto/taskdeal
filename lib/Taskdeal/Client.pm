@@ -86,7 +86,7 @@ sub startup {
           # Send client information
           my $current_role = $manager->current_role;
           my $name = $config->{client}{name};
-          $name = hostname unless defined $name;
+          $name = hostname unless defined $name && length $name;
           my $group = $config->{client}{group};
           my $description = $config->{client}{description};
           $tx->send({json => {
