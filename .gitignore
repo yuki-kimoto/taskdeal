@@ -21,7 +21,7 @@ log/client/*
 !log/server
 log/server/*
 !log/server/.gitignore
-script/hypnotoad.pid
+script/*.pid
 files/*
 !files/.gitignore
 run.d/*

@@ -57,6 +57,7 @@ sub startup {
   my $hypnotoad = $config->{hypnotoad};
   $hypnotoad->{workers} = 1;
   $hypnotoad->{listen} ||= ['http://*:10040'];
+  $hypnotoad->{pid_file} ||= $self->home->rel_file('script/taskdeal-server.pid');
 
   # Tasks directory
   my $tasks_dir = $home->rel_dir('tasks');
