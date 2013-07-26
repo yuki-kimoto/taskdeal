@@ -190,7 +190,6 @@ sub startup {
                   my $command = "./$task 2>&1";
                   my $success = open my $fh, "$command |";
                   $terminal_log->info("$command");
-                  
                   $tx->send({json => {
                     type => 'command_log',
                     cid => $cid,
@@ -199,6 +198,7 @@ sub startup {
                   }});
                   
                   if ($success) {
+                    # Output
                     while (my $line = <$fh>) {
                       $line =~ s/\x0D?\x0A?$//;
                       $terminal_log->info($line);
@@ -209,8 +209,30 @@ sub startup {
                         line => $line
                       }});
                     }
-                    my $status = `echo $?`;
-                    if (($status || '') =~ /^0/) {
+                    
+                    # Status command
+                    my $status_cmd = 'echo $?';
+                    $terminal_log->info($status_cmd);
+                    $tx->send({json => {
+                      type => 'command_log',
+                      cid => $cid,
+                      message_id => $hash->{message_id},
+                      line => $status_cmd
+                    }});
+                    
+                    # Status
+                    my $status = `$status_cmd`;
+                    $status = '' unless defined $status;
+                    $status =~ s/\x0D?\x0A?$//;
+                    $terminal_log->info($status);
+                    $tx->send({json => {
+                      type => 'command_log',
+                      cid => $cid,
+                      message_id => $hash->{message_id},
+                      line => $status
+                    }});
+                                      
+                    if ($status eq 0) {
                       my $message = "Task $task success.";
                       $info_log->info($message);
                       $result->{message} = $message;
