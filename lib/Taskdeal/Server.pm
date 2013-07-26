@@ -229,7 +229,7 @@ sub startup {
       my $api = $self->taskdeal_api;
       unless ($api->logined_admin) {
         my $path_first = $self->req->url->path->parts->[0] || '';
-        unless ($path_first eq '_login') {
+        unless ($path_first eq '_login' || $path_first eq '_start') {
           $self->redirect_to('/_login');
           return;
         }
