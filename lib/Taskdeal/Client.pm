@@ -57,6 +57,7 @@ sub startup {
   
   # hypnotoad config
   my $hypnotoad = $config->{hypnotoad};
+  $hypnotoad->{workers} = 1;
   my $port = Mojo::IOLoop->generate_port;
   $ENV{MOJO_LISTEN} = "http://*:$port";
   $hypnotoad->{pid_file} ||= $self->home->rel_file('script/taskdeal-client.pid');
