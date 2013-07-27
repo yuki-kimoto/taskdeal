@@ -123,12 +123,19 @@ sub tasks {
   
   # Search tasks
   my @tasks;
-  find(sub {
-    my $task = $File::Find::name;
-    $task =~ s/^\Q$role_path//;
-    $task =~ s/^\///;
-    push @tasks, $task if defined $task && length $task;
-  }, $role_path);
+  find(
+    {
+      no_chdir => 1,
+      wanted => sub {
+        my $task = $File::Find::name;
+        return unless -f $task;
+        $task =~ s/^\Q$role_path//;
+        $task =~ s/^\///;
+        push @tasks, $task if defined $task && length $task;
+      }
+    },
+    $role_path
+  );
   
   return \@tasks;
 }
@@ -141,13 +148,21 @@ sub role_tar {
   my $role_path = $self->role_path($role_name);
   chdir $role_path
     or croak "Can't change directory $role_path: $!";
-  find(sub {
-    my $name = $File::Find::name;
-    $name =~ s/^\Q$role_path//;
-    return if !defined $name || $name eq '';
-    $name =~ s/^\///;
-    $tar->add_files($name);
-  }, $role_path);
+  find(
+    {
+      no_chdir => 1,
+      wanted => sub {
+        my $name = $File::Find::name;
+        return unless -f $name;
+        $name =~ s/^\Q$role_path//;
+        return if !defined $name || $name eq '';
+        $name =~ s/^\///;
+        warn $name;
+        $tar->add_files($name);
+      }
+    },
+    $role_path
+  );
 
   my $role_tar = $tar->write;
   
