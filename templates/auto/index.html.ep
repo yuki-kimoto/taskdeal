@@ -5,6 +5,7 @@
   my $mode = param('mode') || '';
   my $id = param('id');
   my $name = param('name');
+  my $execute_user = param('user');
   my $group = param('group');
   my $host = param('host');
   my $port = param('port');
@@ -21,7 +22,8 @@
     ':name{like}',
     $mode eq 'group' ? ":client_group{=}" : ":client_group{like}",
     ':host{like}',
-    ':port{like}'
+    ':port{like}',
+    ':user{like}'
   ];
   my $p = {};
   $p->{id} = "%$id%" if defined $id && length $id;
@@ -35,6 +37,7 @@
   }
   $p->{host} = "%$host%" if defined $host && length $host;
   $p->{port} = "%$port%" if defined $port && length $port;
+  $p->{user} = "%$execute_user%" if defined $execute_user && length $execute_user;
   my $where = $dbi->where;
   $where->clause($clause);
   $where->param($p);
@@ -91,6 +94,7 @@
         form.find("[name=description]").val('');
         form.find("[name=host]").val('');
         form.find("[name=port]").val('');
+        form.find("[name=user]").val('');
       });
       
       // Update role
@@ -277,6 +281,7 @@
         <div style="margin-bottom:5px">
           Host: <%= text_field 'host', style => "margin-top:8px;width:100px;margin-right:10px" %>
           Port: <%= text_field 'port', style => "margin-top:8px;width:100px;margin-right:10px" %>
+          User: <%= text_field 'user', style => "margin-top:8px;width:100px;margin-right:10px" %>
         </div>
         <div style="margin-bottom:13px">
           Group mode:
@@ -322,6 +327,7 @@
         <th>Description</th>
         <th>Host</th>
         <th>Port</th>
+        <th>User</th>
         <th>Role</th>
         % if ($mode eq 'group') {
           <th style="width:200px">Message</th>
@@ -338,6 +344,7 @@
           % my $description = $client->{description};
           % my $host = $client->{host};
           % my $port = $client->{port};
+          % my $execute_user = $client->{user};
           % my $current_role = $client->{current_role};
           % $current_role = '' unless defined $current_role;
           
@@ -347,17 +354,18 @@
           <td><%= $description %></td>
           <td><%= $host %></td>
           <td><%= $port %></td>
-            <td class="role" value="<%= $current_role %>">
-              % if ($mode ne 'group') {
-                % param(role => $current_role);
-                <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
-              % } else {
-                <%= $current_role %>
-              % }
-              % if ($mode ne 'group') {
-                <button class="btn" name="role-update" style="margin:0;padding:0 4px;height:20px;">Update</button>
-              % }
-            </td>
+          <td><%= $execute_user %></td>
+          <td class="role" value="<%= $current_role %>">
+            % if ($mode ne 'group') {
+              % param(role => $current_role);
+              <%= select_field role => [['-' => ''], @$roles], style => "width:100px;padding:0;height:22px;margin-right:5px;margin-top:8px" %>
+            % } else {
+              <%= $current_role %>
+            % }
+            % if ($mode ne 'group') {
+              <button class="btn" name="role-update" style="margin:0;padding:0 4px;height:20px;">Update</button>
+            % }
+          </td>
           % if ($mode eq 'group') {
             <td class="message" style="width:200px"></td>
           % } else {

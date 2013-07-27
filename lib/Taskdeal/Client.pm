@@ -105,11 +105,13 @@ sub startup {
           $name = hostname unless defined $name && length $name;
           my $group = $config->{client}{group};
           my $description = $config->{client}{description};
+          my $user = getpwuid($>);
           $tx->send({json => {
             type => 'client_info',
             current_role => $current_role,
             name => $name,
             group => $group,
+            user => $user,
             description => $description
           }});
           

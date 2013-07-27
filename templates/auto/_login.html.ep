@@ -62,8 +62,8 @@
       session(user => $id);
       session(password => $password_encrypted);
       
-      # session is keeped every 15 minutes
-      session(expiration => 60 * 15);
+      # session is keeped every 30 minutes
+      session(expiration => 60 * 30);
       
       # Go to admin page
       if ($admin) {

@@ -28,12 +28,13 @@ sub client_info {
   my $group = $row->{group};
   my $host = $row->{host};
   my $port = $row->{port};
+  my $user = $row->{user};
   
   # Stringify
   my $info = "[";
   $info .= "Name:$name, " if defined $name && length $name;
   $info .= "Group:$group, " if defined $group && length $group;
-  $info .= "Host:$host:$port, ID:$cid]";
+  $info .= "Host:$host:$port, User:$user, ID:$cid]";
   
   return $info;
 }
@@ -221,6 +222,7 @@ EOS
     "description not null default ''",
     "host not null default ''",
     "port not null default ''",
+    "user not null default ''",
     "current_role not null default ''"
   ];
   for my $column (@$client_columns) {
@@ -230,7 +232,7 @@ EOS
   # Check client table
   eval {
     $dbi->select(
-      {client => [qw/row_id id client_group name description host port/]},
+      {client => [qw/row_id id client_group name description host port user/]},
       table => 'client'
     );
   };

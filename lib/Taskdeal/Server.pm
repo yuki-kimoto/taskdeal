@@ -155,6 +155,7 @@ sub startup {
           $p->{client_group} = defined $params->{group} ? $params->{group} : '';
           $p->{description}
             = defined $params->{description} ? $params->{description} : '';
+          $p->{user} = defined $params->{user} ? $params->{user} : '';
           $dbi->model('client')->update($p, id => $cid);
           
           # Log client connect
