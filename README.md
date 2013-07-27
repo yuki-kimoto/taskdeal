@@ -87,6 +87,32 @@ You can stop server by **--stop** option.
 
   See C<taskdeal-client.conf>
 
+## Role and Task settings
+
+You can create role in <b>server/roles</b> directory.
+Role is simple directory which contains tasks.
+
+At first, you create role in <b>server/roles</b> directory.
+small and midium is role name. You can give any name to role.
+
+    server/roles/small
+                /midium
+
+Task is simple executable file.
+You can create task in role directory.
+
+    server/roles/small/echo
+
+echo is task example which echo "foo"
+
+    #!/bin/sh
+    echo "foo"
+
+Task can be a hierarchical structure using directory.
+
+    server/roles/small/echo
+                      /dir/echo2
+
 ## Developer
 
 If you are developer, you can start application development mode
