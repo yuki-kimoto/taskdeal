@@ -81,11 +81,11 @@ You can stop server by **--stop** option.
 
 ## Server configuration
 
-  See C<taskdeal-server.conf>.
+  See **taskdeal-server.conf**.
 
 ## Client configuration
 
-  See C<taskdeal-client.conf>
+  See **taskdeal-client.conf**
 
 ## Role and Task settings
 
