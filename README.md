@@ -64,6 +64,8 @@ If you can't access this port, you might change firewall setting.
 
 You can execute task to TaskDeal client from TaskDeal server on browser.
 
+Client connection port is 10041 by defaut.
+
 ### Stop Server
 
 You can stop server by **--stop** option.
@@ -78,6 +80,10 @@ You can start TaskDeal client.
 
 Clients are run where you want to execute task.
 Client can receive task from server and execute task.
+
+Client connect to **http://localhost:10041** by default.
+If you want to change this value, set **taskdeal-client.conf**
+server section host and port.
 
 ### Stop Client
 
