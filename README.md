@@ -8,6 +8,8 @@ Setup or deploy multiple environments on web browser.
 
 [Example](http://perlcodesample.com:10040/)
 
+(ID:admin, Password:test)
+
 # Features
 
 * Execute command to multiple machines on web browser.
