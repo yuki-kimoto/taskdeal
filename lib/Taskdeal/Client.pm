@@ -83,7 +83,7 @@ sub startup {
   # Server URL
   my $server_host = $config->{server}{host} || 'localhost';
   my $server_url = "ws://$server_host";
-  my $server_port = $ENV{TASKDEAL_SERVER_PORT} || $config->{server}{port} || '10040';
+  my $server_port = $ENV{TASKDEAL_SERVER_PORT} || $config->{server}{port} || '10041';
   $server_url .= ":$server_port";
   $server_url .= "/connect";
   

@@ -69,7 +69,9 @@ sub startup {
   # Hypnotoad config
   my $hypnotoad = $config->{hypnotoad};
   $hypnotoad->{workers} = 1;
-  $hypnotoad->{listen} ||= ['http://*:10040'];
+  my $admin_listen = $hypnotoad->{admin_listen} || 'http://*:10040';
+  my $client_listen = $hypnotoad->{client_listen} || 'http://*:10041';
+  $hypnotoad->{listen} = [$admin_listen, $client_listen];
   $hypnotoad->{pid_file} ||= $self->home->rel_file('script/taskdeal-server.pid');
 
   # Tasks directory
@@ -112,9 +114,143 @@ sub startup {
   
   # Routes
   my $r = $self->routes;
-  
-  # WebSocket
+
+  # Admin (HTTP access)
   {
+    my $r = $r->under(sub {
+      my $self = shift;
+      
+      if ($self->app->mode eq 'production') {
+        # Port is admin port
+        my $local_port = $self->tx->local_port;
+        my ($admin_port) = $admin_listen =~ /:([0-9]+)$/;
+        
+        if ($local_port ne $admin_port) {
+          $self->render_exception("Admin access port must be $admin_port.");
+          return;
+        }
+      }
+
+      # Check login
+      my $api = $self->taskdeal_api;
+      my $path_first = $self->req->url->path->parts->[0] || '';
+      if (!defined $manager->admin_user) {
+        unless ($path_first eq '_start') {
+          $self->redirect_to('/_start');
+          return;
+        }
+      }
+      elsif (!$api->logined_admin) {
+        unless ($path_first eq '_login') {
+          $self->redirect_to('/_login');
+          return;
+        }
+      }
+      
+      return 1;
+    });
+    
+    # DBViewer(only development)
+    if ($self->mode eq 'development') {
+      eval {
+        $self->plugin(
+          'DBViewer',
+          dsn => "dbi:SQLite:database=$db_file",
+          route => $r
+        );
+      };
+    }
+    
+    # AutoRoute
+    $self->plugin('AutoRoute', route => $r);
+    
+    # Get tasks
+    $r->get('/api/tasks' => sub {
+      my $self = shift;
+      
+      my $role = $self->param('role');
+      
+      my $tasks = $manager->tasks($role);
+      
+      $self->render(json => {tasks => $tasks});
+    });
+    
+    # Update role
+    $r->post('/api/role/update' => sub {
+      my $self = shift;
+      
+      # Controllers
+      my $mid = $message_id++;
+      $controllers->{$mid} = $self;
+      
+      # Sync role
+      my $cid = $self->param('cid');
+      my $role = $self->param('role');
+      my $role_tar = defined $role && length $role ? $manager->role_tar($role) : undef;
+      my $c = $clients->{$cid}{controller};
+      if ($c) {
+        $c->send({
+          json => {
+            type => 'role',
+            role_name => $role,
+            role_tar => $role_tar,
+            message_id => $mid
+          }
+        });
+        $info_log->info('Send role command' . $manager->client_info($cid));
+        $self->render_later;
+      }
+      else {
+        $self->render(json => {ok => 0, message => 'Client[ID:262f1b8] not found'});
+      }
+    });
+    
+    # Execute task
+    $r->post('/api/task/execute' => sub {
+      my $self = shift;
+      
+      # Controllers
+      my $mid = $message_id++;
+      $controllers->{$mid} = $self;
+      
+      # Send task command
+      my $cid = $self->param('cid');
+      my $role = $self->param('role');
+      my $task = $self->param('task');
+      $clients->{$cid}{controller}->send({
+        json => {
+          type => 'task',
+          role => $role,
+          task => $task,
+          cid => $cid,
+          message_id => $mid
+        }
+      });
+      $info_log->info('Send task command' . $manager->client_info($cid));
+      $self->render_later;
+    });
+  }
+  
+  # Client access (WebSocket)
+  {
+    # Bridge
+    my $r = $r->under(sub {
+      my $self = shift;
+      
+      if ($self->app->mode eq 'production') {
+        # Port is client port
+        my $local_port = $self->tx->local_port;
+        my ($client_port) = $client_listen =~ /:([0-9]+)$/;
+        
+        if ($local_port ne $client_port) {
+          $self->render_exception("Client access port must be $client_port");
+          return;
+        }
+      }
+      
+      return 1;
+    });
+  
     # Receive
     $r->websocket('/connect' => sub {
       my $self = shift;
@@ -224,111 +360,6 @@ sub startup {
         $dbi->model('client')->delete(id => $cid);
         $info_log->info("Client Disconnect. " . $info);
       });
-    });
-  }
-  
-  # HTTP access
-  {
-    my $r = $r->under(sub {
-      my $self = shift;
-      
-      # Check login
-      my $api = $self->taskdeal_api;
-      my $path_first = $self->req->url->path->parts->[0] || '';
-      if (!defined $manager->admin_user) {
-        unless ($path_first eq '_start') {
-          $self->redirect_to('/_start');
-          return;
-        }
-      }
-      elsif (!$api->logined_admin) {
-        unless ($path_first eq '_login') {
-          $self->redirect_to('/_login');
-          return;
-        }
-      }
-      
-      return 1;
-    });
-    
-    # DBViewer(only development)
-    if ($self->mode eq 'development') {
-      eval {
-        $self->plugin(
-          'DBViewer',
-          dsn => "dbi:SQLite:database=$db_file",
-          route => $r
-        );
-      };
-    }
-    
-    # AutoRoute
-    $self->plugin('AutoRoute', route => $r);
-    
-    # Get tasks
-    $r->get('/api/tasks' => sub {
-      my $self = shift;
-      
-      my $role = $self->param('role');
-      
-      my $tasks = $manager->tasks($role);
-      
-      $self->render(json => {tasks => $tasks});
-    });
-    
-    # Update role
-    $r->post('/api/role/update' => sub {
-      my $self = shift;
-      
-      # Controllers
-      my $mid = $message_id++;
-      $controllers->{$mid} = $self;
-      
-      # Sync role
-      my $cid = $self->param('cid');
-      my $role = $self->param('role');
-      my $role_tar = defined $role && length $role ? $manager->role_tar($role) : undef;
-      my $c = $clients->{$cid}{controller};
-      if ($c) {
-        $c->send({
-          json => {
-            type => 'role',
-            role_name => $role,
-            role_tar => $role_tar,
-            message_id => $mid
-          }
-        });
-        $info_log->info('Send role command' . $manager->client_info($cid));
-        $self->render_later;
-      }
-      else {
-        $self->render(json => {ok => 0, message => 'Client[ID:262f1b8] not found'});
-      }
-    });
-    
-    # Execute task
-    $r->post('/api/task/execute' => sub {
-      my $self = shift;
-      
-      # Controllers
-      my $mid = $message_id++;
-      $controllers->{$mid} = $self;
-      
-      # Send task command
-      my $cid = $self->param('cid');
-      my $role = $self->param('role');
-      my $task = $self->param('task');
-      $clients->{$cid}{controller}->send({
-        json => {
-          type => 'task',
-          role => $role,
-          task => $task,
-          cid => $cid,
-          message_id => $mid
-        }
-      });
-      $info_log->info('Send task command' . $manager->client_info($cid));
-      $self->render_later;
     });
   }
   
