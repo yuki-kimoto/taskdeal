@@ -36,7 +36,6 @@ use Mojolicious::Plugin::AutoRoute::Util 'template';
 has 'manager';
 has 'dbi';
 has 'validator';
-has 'info_log';
 
 # Clients
 my $clients = {};
@@ -51,11 +50,11 @@ sub startup {
   my $home = $self->home;
   
   # Information log
-  my $info_log = Taskdeal::Log->new(
+  my $log = Taskdeal::Log->new(
     path => $home->rel_file('log/server/info.log'),
     app => $self
   );
-  $self->info_log($info_log);
+  $self->log($log);
   
   # Client command log
   my $client_terminal_log = Taskdeal::Log->new(
@@ -197,7 +196,7 @@ sub startup {
             message_id => $mid
           }
         });
-        $info_log->info('Send role command' . $manager->client_info($cid));
+        $log->info('Send role command' . $manager->client_info($cid));
         $self->render_later;
       }
       else {
@@ -226,7 +225,7 @@ sub startup {
           message_id => $mid
         }
       });
-      $info_log->info('Send task command' . $manager->client_info($cid));
+      $log->info('Send task command' . $manager->client_info($cid));
       $self->render_later;
     });
   }
@@ -271,7 +270,7 @@ sub startup {
       $dbi->model('client')->insert($params);
       
       # Connected message
-      $info_log->info("Success Websocket Handshake. " . $manager->client_info($cid));
+      $log->info("Success Websocket Handshake. " . $manager->client_info($cid));
       
       # Receive client params
       $self->on(json => sub {
@@ -295,12 +294,12 @@ sub startup {
           $dbi->model('client')->update($p, id => $cid);
           
           # Log client connect
-          $info_log->info("Client Connect. " . $manager->client_info($cid));
+          $log->info("Client Connect. " . $manager->client_info($cid));
         }
         
         # Role result
         elsif ($type eq 'role_result') {
-          $info_log->info('Recieve role result' . $manager->client_info($cid));
+          $log->info('Recieve role result' . $manager->client_info($cid));
           
           # Parameters
           my $message_id = $params->{message_id};
@@ -325,7 +324,7 @@ sub startup {
         
         # Task result
         elsif ($type eq 'task_result') {
-          $info_log->info('Recieve task result' . $manager->client_info($cid));
+          $log->info('Recieve task result' . $manager->client_info($cid));
           
           # Parameters
           my $message_id = $params->{message_id};
@@ -358,7 +357,7 @@ sub startup {
         my $info = $manager->client_info($cid);
         delete $clients->{$cid};
         $dbi->model('client')->delete(id => $cid);
-        $info_log->info("Client Disconnect. " . $info);
+        $log->info("Client Disconnect. " . $info);
       });
     });
   }
