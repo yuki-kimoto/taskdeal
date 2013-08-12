@@ -232,19 +232,6 @@ sub startup {
     my $r = $r->under(sub {
       my $self = shift;
       
-      # Admin page ip control
-      my $ip = $self->tx->remote_address;
-      unless ($manager->is_allow($ip, %{$config->{ip_control_admin}})) {
-        $self->res->code('403');
-        return;
-      }
-      
-      # Client ip control
-      unless ($manager->is_allow($ip, %{$config->{ip_control_client}})) {
-        $self->res->code('403');
-        return;
-      }
-      
       # Check login
       my $api = $self->taskdeal_api;
       my $path_first = $self->req->url->path->parts->[0] || '';

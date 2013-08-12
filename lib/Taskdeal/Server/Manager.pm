@@ -49,36 +49,6 @@ sub is_admin {
   return $is_admin;
 }
 
-sub is_allow {
-  my ($self, $ip, %opt) = @_;
-  
-  # Local address
-  return 1 if $ip eq '127.0.0.1' || '::1';
-  
-  # Check IP address
-  if (my $allow_str = $opt{allow}) {
-    my @allow = split / *, */, $allow_str;
-    
-    if (grep { $_ eq $ip } @allow) {
-      return 1;
-    }
-    else {
-      return;
-    }
-  }
-  elsif (my $deny_str = $opt{deny}) {
-    my @deny = split / *, */, $deny_str;
-    if (grep { $_ eq $ip } @deny) {
-      return;
-    }
-    else {
-      return 1;
-    }
-  }
-  
-  return 1;
-}
-
 sub roles_dir {
   my $self = shift;
   
