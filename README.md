@@ -6,9 +6,7 @@ Setup or deploy multiple environments on web browser.
 
 # Example
 
-[Example](http://perlcodesample.com:10040/)
-
-(ID:admin, Password:test)
+[Example](http://perlcodesample.com:10040/) (ID:admin, Password:test)
 
 # Features
 
