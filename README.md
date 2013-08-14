@@ -10,7 +10,7 @@ Setup or deploy multiple environments on web browser.
 
 # Caution
 
-TaskDeal is yet alpha version. I will change implmentation without warnings.
+**TaskDeal is yet alpha version. I will change implmentation without warnings.**
 
 # Features
 
