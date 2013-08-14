@@ -8,6 +8,10 @@ Setup or deploy multiple environments on web browser.
 
 [Example](http://perlcodesample.com:10040/) (ID:admin, Password:test)
 
+# Caution
+
+TaskDeal is yet alpha version. I will change implmentation without warnings.
+
 # Features
 
 * Execute command to multiple machines on web browser.
