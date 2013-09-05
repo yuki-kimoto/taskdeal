@@ -16,7 +16,6 @@ Setup or deploy multiple environments on web browser.
 * Perl 5.8.7+ only needed
 * Having built-in web server
 * SSL support
-* IP control suppport
 
 # Installation into own Unix/Linux Server
 
