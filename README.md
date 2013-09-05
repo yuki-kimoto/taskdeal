@@ -1,6 +1,6 @@
 # TaskDeal
 
-Setup or deploy multiple environments on web browser.
+Setup or deploy multiple environments on web browser. Ruby Chef alternative tool.
 
 <img src="http://cdn-ak.f.st-hatena.com/images/fotolife/p/perlcodesample/20130812/20130812143922_original.png?1376285992" width="850">
 
@@ -11,16 +11,17 @@ Setup or deploy multiple environments on web browser.
 # Features
 
 * Execute command to multiple machines on web browser.
-* Client and Server comunicate using WebSocket. Server can push notice to clients.
+* Client(machine side) and Server(Web browser side) comunicate using WebSocket. Server can push notice to clients.
 * Portable. you can install it into your Unix/Linux server, and cygwin(with gcc4) on windows.
 * Perl 5.8.7+ only needed
-* Having built-in web server
 * SSL support
+* You don't have to learn Ruby DSL and cook book as Chef. You can write machine setting by familiar shell.
+* You don't have to do client setting becuase command is pushed from server side. It is ok only to connect to server.
+* Client command log is send to server. You can know what is done on clinet.
 
 # Installation into own Unix/Linux Server
 
-TaskDeal have own web server,
-so you can execute application very easily.
+You can install taskdeal very easy.
 
 ## Download
 
@@ -49,8 +50,8 @@ If "All tests successful" is shown, setup process is success.
 
 ### Start/Restart Server
 
-You can start TaskDeal server.
-Application is run in background, port is **10040** by default.
+You can start TaskDeal server in the following command.
+Server is run in background, port is **10040** by default.
 
     ./taskdeal-server
 
@@ -73,12 +74,11 @@ You can stop server by **--stop** option.
 
 ### Start Client
 
-You can start TaskDeal client.
+You can start TaskDeal client in the following command.
 
     ./taskdeal-client
 
-Clients are run where you want to execute task.
-Client can receive task from server and execute task.
+Client receive command from server, and execute task.
 
 Client connect to **http://localhost:10041** by default.
 If you want to change this value, set **taskdeal-client.conf**
@@ -142,7 +142,7 @@ If you have git, it is easy to install from git.
 
     git clone git://github.com/yuki-kimoto/taskdeal.git
 
-It is useful to write configuration in ***taskdeal.my.conf***, not taskdeal.conf.
+It is useful to write configuration in taskdeal-client.my.conf and taskdeal-server.my.conf.
 
 ## Web Site
 

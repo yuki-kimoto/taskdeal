@@ -1,0 +1,213 @@
+<!doctype html>
+<html>
+  <head>
+    <title>
+      TaskDeal - Setup or deploy multiple environments on web browser. Ruby Chef alternative tool.
+    </title>
+    <style>/*<![CDATA[*/
+
+      a { color: inherit }
+      a:hover { color: #2a2a2a }
+      a img { border: 0 }
+      body {
+        background-color: #f5f6f8;
+        color: #445555;
+        font: 0.9em 'Helvetica Neue', Helvetica, sans-serif;
+        font-weight: normal;
+        line-height: 1.5em;
+        margin: 0;
+      }
+      pre {
+        -moz-border-radius: 5px;
+        border:#aaa 1px solid;
+        border-radius: 5px;
+        color: #333;
+        font: 0.8em Consolas, Menlo, Monaco, Courier, monospace;
+        line-height: 1.7em;
+        text-align: left;
+        padding-bottom: 1.5em;
+        padding-top: 1.5em;
+        white-space: pre-wrap;
+      }
+      #footer {
+        padding-top: 1em;
+        text-align: center;
+      }
+
+			h1, h2, h3 {
+			  color: #2a2a2a;
+			  font-size: 1.5em;
+			  margin: 0;
+			}
+			#fun {
+			  background: url(../digitalforest.png) repeat-x;
+			  height: 450px;
+			  text-align: center;
+			}
+			#introduction {
+			  background-color: #fff;
+			  -moz-border-radius-bottomleft: 5px;
+			  border-bottom-left-radius: 5px;
+			  -moz-border-radius-bottomright: 5px;
+			  border-bottom-right-radius: 5px;
+			  -moz-box-shadow: 0px 0px 2px #ccc;
+			  -webkit-box-shadow: 0px 0px 2px #ccc;
+			  box-shadow: 0px 0px 2px #ccc;
+			  margin-left: 5em;
+			  margin-right: 5em;
+			  padding: 3em;
+			  padding-top: 70px;
+			}
+			#wrapperlicious {
+			  max-width: 1000px;
+			  margin: 0 auto;
+			}
+
+/*]]>*/</style>
+      <link href="/css/index.css" media="screen" rel="stylesheet" />
+
+  </head>
+  <body>
+<div id="taskdealbar">
+  <style scoped="scoped">/*<![CDATA[*/
+
+    #taskdealbar {
+      background-color: #1a1a1a;
+      background: -webkit-gradient(
+        linear,
+        0% 0%,
+        0% 100%,
+        color-stop(0%, #2a2a2a),
+        color-stop(100%, #000)
+      );
+      background: -moz-linear-gradient(
+        top,
+        #2a2a2a 0%,
+        #000 100%
+      );
+      background: linear-gradient(top, #2a2a2a 0%, #000 100%);
+      -moz-box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.6);
+      -webkit-box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.6);
+      box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.6);
+      height: 46px;
+      overflow: hidden;
+      position: absolute;
+      text-align: right;
+      vertical-align: middle;
+      width: 100%;
+      z-index: 1000;
+    }
+    #taskdealbar-logo {
+      float: left;
+      margin-left: 5em;
+      padding-top: 3px;
+    }
+    #taskdealbar-logo a {
+      text-decoration:none;
+      color:white;
+    }
+    #taskdealbar-links {
+      display:table-cell;
+      float: right;
+      height: 60px;
+      margin-right: 5em;
+      margin-top: 1em;
+    }
+    #taskdealbar-links a {
+      color: #ccc;
+      font: 1em 'Helvetica Neue', Helvetica, sans-serif;
+      font-weight: 300;
+      margin-left: 0.5em;
+      padding-bottom: 1em;
+      padding-top: 1em;
+      text-decoration: none;
+      -webkit-transition: all 200ms ease-in-out;
+      -moz-transition: all 200ms ease-in-out;
+      -o-transition: all 200ms ease-in-out;
+      transition: all 200ms ease-in-out;
+    }
+    #taskdealbar-links a:hover { color: #fff }
+
+/*]]>*/</style>
+  <div id="taskdealbar-logo" style="color:white;font-size:20px;padding-top:12px;padding-left:60px">
+    <a href=".">TaskDeal</a>
+  </div>
+  <div id="taskdealbar-links">
+    <a href="http://perlcodesample.sakura.ne.jp/taskdeal.cgi">Example</a>
+    <a href="https://github.com/yuki-kimoto/taskdeal/archive/latest.zip">Download</a>
+    <a href="https://github.com/yuki-kimoto/taskdeal">Repository & Documentation</a>
+    <a href="http://twitter.com/perlcodesample2">Twitter</a>
+  </div>
+</div>
+<div id="wrapperlicious">
+
+  <div id="introduction">
+
+    <h1>
+      Setup or deploy multiple environments on web browser. Ruby Chef alternative tool.
+    </h1>
+    <p>
+      TaskDeal is Setup or deploy multiple machine on web browser. Ruby Chef alternative tool.
+      Inatallation is very easy and you can write setting process by shell.
+    </p>
+
+    <p>
+      <a href="https://github.com/yuki-kimoto/taskdeal">
+        <img src="http://cdn-ak.f.st-hatena.com/images/fotolife/p/perlcodesample/20130421/20130421180903_original.png" width="800" alt="TaskDeal">
+      </a>
+    </p>
+    
+    <h2>Features</h2>
+    <ul>
+      <li>
+        Execute command to multiple machines on web browser.
+      </li>
+      <li>
+        Client(machine side) and Server(Web browser side) comunicate using WebSocket. Server can push notice to clients.
+      </li>
+      <li>
+        Portable. you can install it into your Unix/Linux server, and cygwin(with gcc4) on windows.
+      </li>
+      <li>
+        Perl 5.8.7+ only needed
+      </li>
+      <li>
+        SSL support
+      </li>
+      <li>
+        You don't have to learn Ruby DSL and cook book as Chef. You can write machine setting by familiar shell.
+      </li>
+      <li>
+        You don't have to do client setting becuase command is pushed from server side. It is ok only to connect to server.
+      </li>
+      <li>
+        Client command log is send to server. You can know what is done on clinet.
+      </li>
+    </ul>
+
+    <h2>Example</h2>
+    <pre>  <a href="http://perlcodesample.sakura.ne.jp/taskdeal.cgi">Example</a></pre>
+    
+    <h2>Download</h2>
+    <pre>  <a href="https://github.com/yuki-kimoto/taskdeal/archive/latest.zip">Download</a> </pre>
+    
+    <h2>Repository & Documentation</h2>
+    <pre>  <a href="https://github.com/yuki-kimoto/taskdeal">Repository & Documentation</a> </pre>
+
+    <hr style="margin-top:20px;margin-bottom:10px">
+    <div>
+      <b>Sister project</b>
+    </div>
+    <div>
+      <a href="http://perlcodesample.sakura.ne.jp/gitprep-site">GitPrep</a>
+      <a href="http://perlcodesample.sakura.ne.jp/webdbviewer-site">WebDBViewer</a>
+    </div>
+    
+</div>
+<div id="footer" style="margin-bottom:10px">
+  <a href="." style="text-decoration:none;color:#666;">
+    TaskDeal
+  </a>
+</div>
+</body>
+</html>
