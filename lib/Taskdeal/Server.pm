@@ -3,6 +3,8 @@ use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../mojo/lib";
 use lib "$FindBin::Bin/../extlib/lib/perl5";
 
+our $VERSION = '0.01';
+
 # Digest::SHA loading to Mojo::Util
 {
   package Mojo::Util;
