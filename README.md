@@ -104,10 +104,10 @@ You can create role in <b>server/roles</b> directory.
 Role is simple directory which contains tasks.
 
 At first, you create role in <b>server/roles</b> directory.
-small and midium is role name. You can give any name to role.
+small and medium is role name. You can give any name to role.
 
     server/roles/small
-                /midium
+                /medium
 
 Task is simple executable file.
 You can create task in role directory.
